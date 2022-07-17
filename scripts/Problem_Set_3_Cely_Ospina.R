@@ -33,7 +33,8 @@ p_load(tidyverse,    #Para limpiar los datos
        randomForest,
        xgboost,
        glmnet,
-       pROC) #por ahora llame todas las del problem set 2
+       pROC,
+       class) #por ahora llame todas las del problem set 2
 
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
@@ -183,6 +184,7 @@ class(train$l3)
 train$property_type <- as.factor(train$property_type)       
 class(train$property_type)
 
+
 ###### LO SEGUNDO
 #vamos a ver como se comporta price
 #recordar que price esta en train pero no en test
@@ -190,6 +192,7 @@ class(train$property_type)
 summary(train$price)
 hist(train$price) #hay demasiados precios muy altos que arrastran todo
 #en el histograma vemos que la mayoria de precios estan hacia los 500 millones de pesos
+
 
 #aqui voy a hacer una tabla que nos diga como se comportan las variables hasta el momento
 
@@ -207,22 +210,88 @@ train %>%
 # TIPO VIVIENDA = 76% apartamento, 24% casa
 
 
+#QUE PASA SI ELIMINAMOS TODOS LOS MISSINGS
+
+train_min <- train %>% drop_na(c("surface_total")) #queda de 27.722 observaciones #de banos quedamos con 165 missings, creo que podemos eliminarlos tambien
+summary(train_min) 
+
+train_min <- train_min %>% drop_na(c("bathrooms")) #queda de 27.557 obs y sin NAs en bathrooms
+summary(train_min)
+
+#ahora, como se comporta surface_total en esta submuestra
+
+summary(train_min$surface_total) #el valor minimo es de 11 y el maximo es de 108.800, querriamos eliminarnos a ambos
+
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#11      70     108     173     189  108800 
+
+
+boxplot(train_min$surface_total, 
+        ylab = "Area total"
+)
+
+#entonces vamos a reducirle colas
+
+lower_area<-0.01
+upper_area<-0.99
+
+lower_bound_atr<- quantile(train_min$surface_total, lower_area) 
+lower_bound_atr #35 m2
+
+upper_bound_atr <- quantile(train_min$surface_total, upper_area) 
+upper_bound_atr #936 m2
+
+
+train_min <- train_min %>% subset(surface_total >= lower_bound_atr) 
+train_min <- train_min %>% subset(surface_total <= upper_bound_atr) #queda de 27.035 obs
+
+
+boxplot(train_min$surface_total, 
+        ylab = "Area total"
+)
+
+
+#veamos como queda el summary con esta nueva distribucion
+
+train_min %>%
+  select(price, start_date, l2, bedrooms, bathrooms, surface_total, property_type) %>%
+  tbl_summary()
+
+#de aqui (train_min) obtenemos a grandes rasgos lo siguiente=
+
+# PRECIO PROMEDIO = 445 millones #al quitar las casas mas grandes, redujimos un poco el precio promedio
+# DEPARTAMENTOS = 77% estan en Cundinamarca y 23% en Antioquia ###
+# CUARTOS = En promedio hay 3
+# BANOS = En promedio hay 2 (ya no hay missings)
+# AREA TOTAL = Promedio 107 m2 (ya no hay missings)
+# TIPO VIVIENDA = 67% apartamento, 33% casa
+
+hist(train_min$price)
+
+#veamos algunas relaciones basicas entre variables
+
+ggplot(data = train_min , mapping = aes(x = surface_total , y = price))+
+  geom_point(col = "tomato" , size = 0.75) #aqui se evidencia que a mayor area, mayor precio
+
+
+ggplot(data = train_min , mapping = aes(x = bathrooms , y = price))+
+  geom_point(col = "tomato" , size = 0.75) #al principio entre mas banos mas precio, pero luego esto se empieza a comportar distinto cuando hay ya demasiados banos, como mas de 5
+#resta la duda de si deberiamos eliminar estos outliers de bano
+summary(train_min$bathrooms)
+
+ggplot(data = train_min , mapping = aes(x = bedrooms , y = price))+
+  geom_point(col = "tomato" , size = 0.75) #pasa lo mismo que con bathrooms, aumenta el precio como hasta 5 bedrooms y luego va disminuyendo
+summary(train_min$bedrooms)
+
+##Nota= esto ya lo estoy sacando con train_min , que es la base sin missings, si en algun momento quisieramos imputarle valores a estos missings habria que modificar esta parte
+
+###PREDICTORS COMING FROM EXTERNAL SOURCES
 
 
 
 
-#vamos a ver que pasa cortando las colas de la distribucion
 
-
-
-
-
-
-
-
-
-
-
+###PREDICTORS COMING FROM DESCRIPTION
 
 
 
