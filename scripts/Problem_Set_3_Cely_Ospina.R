@@ -34,7 +34,9 @@ p_load(tidyverse,    #Para limpiar los datos
        xgboost,
        glmnet,
        pROC,
-       class) #por ahora llame todas las del problem set 2
+       class,
+       sf,
+       leaflet) #por ahora llame todas las del problem set 2
 
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
@@ -287,9 +289,83 @@ summary(train_min$bedrooms)
 
 ###PREDICTORS COMING FROM EXTERNAL SOURCES
 
+#voy a crear un subset por ciudad
+
+train_med <- train_min
+train_med <- train_med [!(train_med$l3=="Bogotá D.C"),] #6.024 obs #medellin
+
+train_bog <- train_min
+train_bog <- train_bog [(train_bog$l3=="Bogotá D.C"),] #27.035 obs #bogota
+
+#espacializar
+
+bogota <- st_as_sf(x=train_bog,coords=c("lon","lat"),crs=4326)
+class(bogota)
+bogota
+
+leaflet() %>% addCircleMarkers(data=bogota) #visualizacion dinamica
+
+ggplot()+
+  geom_sf(data=bogota) +
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))    #visualizacion a modo de plot 
+
+#vemos en las dos salidas anteriores que hay datos para toda la ciudad, no solamente para Chapinero
+
+
+#voy a traer la informacion de las upz
+
+upla<-read_sf("stores/upla/UPla.shp") #totalidad de la ciudad
+
+ggplot()+
+  geom_sf(data=upla
+          %>% filter(UPlNombre
+                     %in%c("EL REFUGIO","SAN ISIDRO - PATIOS", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO")), fill = NA) +
+  geom_sf(data=bogota, col="red") +
+  
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))   #aqui nos salen todos los puntos de la ciudad, no los de chapinero
 
 
 
+
+#lo que tenemos que hacer es determinar si quedan dentro de los poligonos que nos importan o no
+
+up_chapinero <- upla %>% filter(UPlNombre
+                                %in%c("EL REFUGIO", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO"))
+
+plot (bogota$geometry)
+plot (upla)
+plot(up_chapinero)
+
+ggplot()+
+  geom_sf(data=up_chapinero,
+          fill = NA) +
+  geom_sf(data=bogota, col="red") 
+  theme_bw() +
+  theme(axis.title =element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=6))
+
+
+
+bogota[up_chapinero, , op = st_intersects]
+
+prueba1 = bogota |>
+  st_filter(y = up_chapinero, .predicate = st_intersects)
+
+st_intersection (bogota , up_chapinero)
+
+good_points <- st_filter(bogota$geometry, up_chapinero$geometry)  ##NOTA = NO HE PODIDO HACER LA INTERSECCION DE PUNTOS EN EL POLIGONO DE CHAPINERO! PENDIENTE REVISAR
+                 
+                 
 
 ###PREDICTORS COMING FROM DESCRIPTION
 
