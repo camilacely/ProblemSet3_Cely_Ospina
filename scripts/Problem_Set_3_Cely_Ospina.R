@@ -36,7 +36,9 @@ p_load(tidyverse,    #Para limpiar los datos
        pROC,
        class,
        sf,
-       leaflet) #por ahora llame todas las del problem set 2
+       leaflet,
+       tmaptools,
+       osmdata) #por ahora llame todas las del problem set 2
 
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
@@ -132,7 +134,7 @@ summary(train$surface_covered) #57.515 NAs
 #  mutate(area_descubierta = (train$surface_total - train$surface_covered  ))
 
 #summary(train$area_descubierta) 
-#view(train$area_descubierta)  #la verdad se generan 96.625 NAs y valores negativos #las voy a dejar para que no corran porque por ahora creo que esta variable no es necesaria
+#head(train$area_descubierta)  #la verdad se generan 96.625 NAs y valores negativos #las voy a dejar para que no corran porque por ahora creo que esta variable no es necesaria
 
 #creo que lo mejor sera guiarnos por surface_total
 
@@ -141,24 +143,24 @@ var_lab(train$surface_total) = "Area total"
 
 #dinero
 summary(train$currency) #aqui nos dice que estan medidas en COP
-view(train$currency)
+head(train$currency)
 sum(train$currency == "USD") #sale 0  #vemos que no hay valores en dolares
 sum(train$currency == "COP") #107567  #la totalidad de los precios estan en COP
 
 
 #anuncio
-view(train$title) #aqui sale el titulo de la oferta, ejemplo= "hermosa casa en venta"
+head(train$title) #aqui sale el titulo de la oferta, ejemplo= "hermosa casa en venta"
 var_lab(train$title) = "Titulo anuncio"
 
-view(train$description) #aqui dice los detalles, ejemplo = barrio, "muy iluminado", "moderno", etc7
+head(train$description) #aqui dice los detalles, ejemplo = barrio, "muy iluminado", "moderno", etc7
 var_lab(train$description) = "Descripcion anuncio"
 
 #tipo de propiedad
-view(train$property_type) #esta nos dice si es casa o apartamento
+head(train$property_type) #esta nos dice si es casa o apartamento
 var_lab(train$property_type) = "Tipo de propiedad"
 
 #venta o arriendo
-view(train$operation_type) #aqui nos dice si es venta o arriendo
+head(train$operation_type) #aqui nos dice si es venta o arriendo
 sum(train$operation_type == "Venta") #107.567 #la totalidad de propiedades estan en venta
 
 #Entonces = las variables que considero que mas nos importan son las siguientes
@@ -195,6 +197,15 @@ summary(train$price)
 hist(train$price) #hay demasiados precios muy altos que arrastran todo
 #en el histograma vemos que la mayoria de precios estan hacia los 500 millones de pesos
 
+#hagamos una variable que este en millones de pesos para que sea mas facil de interpretar
+
+train <- train %>% 
+  mutate(precio_millones = (train$price / 1000000 ))
+
+as.numeric (train$precio_millones)
+
+hist(train$precio_millones)
+
 
 #aqui voy a hacer una tabla que nos diga como se comportan las variables hasta el momento
 
@@ -212,7 +223,56 @@ train %>%
 # TIPO VIVIENDA = 76% apartamento, 24% casa
 
 
-#QUE PASA SI ELIMINAMOS TODOS LOS MISSINGS
+#Antes de eliminar los missings vamos a ver si podemos "completar" un poco la variable de area con lo que haya en 
+#surface_total y en surface_covered
+
+summary(train$surface_covered) #87.368 missings
+summary(train$surface_total) #79.845 missings
+
+#voy a duplicar ambas variables para poderlas trabajar
+
+train <- train %>% 
+  mutate(area_total = train$surface_total)
+
+train <- train %>% 
+  mutate(area_cubierta = train$surface_covered)
+
+#ahora voy a cambiar los NAs por ceros
+
+train$area_total [is.na(train$area_total)] <- 0
+
+train$area_cubierta [is.na(train$area_cubierta)] <- 0
+
+#quiero que ambas sean numeric
+
+as.numeric (train$area_total)
+as.numeric (train$area_cubierta)
+
+class (train$area_total) #esta sale labelled numeric
+class (train$area_cubierta)
+
+var_lab(train$area_total) = NULL #le quito el label para evitar este problema
+
+
+#ahora voy a crear una variable que "sume" esas dos
+
+train <- train %>% 
+  mutate(area = if_else( train$area_total==0 , train$area_cubierta, train$area_total)) #le pido que mantenga area_total lo mas que pueda a menos que sea cero, entonces que ponga area_cubierta
+
+#habiendo hecho eso, las variables con solo ceros en "area" son las que realmente son missings
+
+sum(train$area == '0') #70.588 missings 
+
+#notar que redujimos un poco porque originalmente teniamos #87.368 missings y #79.845 missings respectivamente
+
+#EN TODO CASO, ESTA PENDIENTE IMPUTARLE VALORES A ESAS 70MIL OBSERVACIONES
+#lo haremos de dos maneras= sacando el dato de la descripcion del anuncio
+# o= imputando por valores de k-nearest neighbors
+# (esto esta pendiente)
+
+
+
+#QUE PASARIA SI ELIMINAMOS TODOS LOS MISSINGS
 
 train_min <- train %>% drop_na(c("surface_total")) #queda de 27.722 observaciones #de banos quedamos con 165 missings, creo que podemos eliminarlos tambien
 summary(train_min) 
@@ -286,8 +346,9 @@ ggplot(data = train_min , mapping = aes(x = bedrooms , y = price))+
 summary(train_min$bedrooms)
 
 ##Nota= esto ya lo estoy sacando con train_min , que es la base sin missings, si en algun momento quisieramos imputarle valores a estos missings habria que modificar esta parte
+#PENDIENTE PORQUE EN LA CLASE DEL MARTES NOS LO VAN A EXPLICAR
 
-###PREDICTORS COMING FROM EXTERNAL SOURCES
+
 
 #voy a crear un subset por ciudad
 
@@ -320,52 +381,26 @@ ggplot()+
 
 upla<-read_sf("stores/upla/UPla.shp") #totalidad de la ciudad
 
-ggplot()+
-  geom_sf(data=upla
-          %>% filter(UPlNombre
-                     %in%c("EL REFUGIO","SAN ISIDRO - PATIOS", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO")), fill = NA) +
-  geom_sf(data=bogota, col="red") +
-  
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))   #aqui nos salen todos los puntos de la ciudad, no los de chapinero
-
-
-
-
-#lo que tenemos que hacer es determinar si quedan dentro de los poligonos que nos importan o no
-
 up_chapinero <- upla %>% filter(UPlNombre
-                                %in%c("EL REFUGIO", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO"))
+                                %in%c("EL REFUGIO", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO")) #aqui agarro las upz de chapinero (localidad)
 
-plot (bogota$geometry)
-plot (upla)
-plot(up_chapinero)
+bar <- opq(bbox = st_bbox(up_chapinero)) %>% #cuando hacemos esta st_bbox de solo chapinero, ya no nos salen los puntos de toda la ciudad sino solo dentro de esa area
+  add_osm_feature(key = "amenity", value = "bar") %>%
+  osmdata_sf() %>% .$osm_points %>% select(osm_id,name)
 
-ggplot()+
-  geom_sf(data=up_chapinero,
-          fill = NA) +
-  geom_sf(data=bogota, col="red") 
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))
+bar %>% head() 
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que aqui esta hecho con bares a modo de ejemplo
 
 
 
-bogota[up_chapinero, , op = st_intersects]
 
-prueba1 = bogota |>
-  st_filter(y = up_chapinero, .predicate = st_intersects)
 
-st_intersection (bogota , up_chapinero)
-
-good_points <- st_filter(bogota$geometry, up_chapinero$geometry)  ##NOTA = NO HE PODIDO HACER LA INTERSECCION DE PUNTOS EN EL POLIGONO DE CHAPINERO! PENDIENTE REVISAR
                  
-                 
+###PREDICTORS COMING FROM EXTERNAL SOURCES
+
+
+
 
 ###PREDICTORS COMING FROM DESCRIPTION
 
