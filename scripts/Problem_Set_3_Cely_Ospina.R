@@ -412,12 +412,6 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 ###PREDICTORS COMING FROM DESCRIPTION ## aqui empezar a hacer lo que vimos en la clase con Eduard (martes) - usar base completa (train)
 
-chapinero <- getbb(place_name = "UPZ Chapinero, Bogota", 
-                   featuretype = "boundary:administrative", 
-                   format_out = "sf_polygon") %>% .$multipolygon
-
-leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
-
 
 ##############################
 #######Imputar valores########
@@ -516,6 +510,24 @@ table(train_f$estrato)
 table(is.na(train_f$estrato)) #106210 NA >> creo que esta es mejor sacarla del DANE
 
 
+####info DANE#### >>> tendriamos que traer manzanas y no entiendo como se limpia el archivo de manzanas 
+
+#por manzana calculo la mediana del numero de cuartos, nu de personas y el estrato
+## load data
+mnz_censo = import("http://eduard-martinez.github.io/data/fill-gis-vars/mnz_censo.rds")
+
+## about data
+browseURL("https://eduard-martinez.github.io/teaching/meca-4107/6-censo.txt")
+
+## spatial join
+house_censo = st_join(house_mnz,mnz_censo)
+colnames(house_censo)
+
+
+
+
+
+
 ##filtrar chapinero y el poblado? > creo que al ser barrios con precios altos podriamos tener problemas al entrenar con todos los demas 
 #Se podria filtrar como lo de imputar texto, buscar en title chapinero y el poblado
 
@@ -534,5 +546,16 @@ ch = "chapinero"## pattern
 p = "el poblado"
 p2= "poblado"
 
+
+
+
+chapinero <- getbb(place_name = "UPZ Chapinero, Bogota", 
+                   featuretype = "boundary:administrative", 
+                   format_out = "sf_polygon") %>% .$multipolygon
+
+leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
+
+house_censo = st_join(house_mnz,mnz_censo)
+colnames(house_censo)
 
 
