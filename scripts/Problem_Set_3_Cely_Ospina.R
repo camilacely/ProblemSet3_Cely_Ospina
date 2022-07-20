@@ -51,8 +51,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -78,7 +78,7 @@ intersect(names(test), names(train))
 #fechas
 summary(train$start_date) #estas fechas si dan bien
 summary(train$end_date) #estas fechas, por encima de la mediana, tienen cosas raras, ejemplo año 4000 o 9000
-#ademas no estoy segura de que quieren decir las fechas
+#las fechas se refieren al inicio (y fin, cuando hay) del anuncio en Properati, no consideramos que sean utiles para la prediccion
 summary(train$created_on) #estas dan bien
 
 #coordenadas
@@ -112,6 +112,7 @@ summary(train$bathrooms) # tiene 30.074 NAs
 
 #train <- train %>% drop_na(c("bathrooms")) #aqui quedaria una base con 77.493 obs
 #POR AHORA NO LA VOY A CORRER PORQUE NO ESTOY SEGURA DE LA DECISION DE ELIMINAR LOS NAs
+#SEGUN LO QUE VIMOS EL MARTES CON EDUARD, LO MEJOR ES IMPUTARLO CON INFORMACION DE LOS VECINOS
 
 var_lab(train$bathrooms) = "Num de banos"
 
@@ -224,6 +225,33 @@ train %>%
 # TIPO VIVIENDA = 76% apartamento, 24% casa
 
 
+###################################################################
+#QUE PASARIA SI ELIMINAMOS TODOS LOS MISSINGS DE TRAIN (LA ORIGINAL)
+
+train_min <- train %>% drop_na(c("surface_total")) #queda de 27.722 observaciones #de banos quedamos con 165 missings, creo que podemos eliminarlos tambien
+summary(train_min) 
+
+train_min <- train_min %>% drop_na(c("bathrooms")) #queda de 27.557 obs y sin NAs en bathrooms
+summary(train_min)
+
+#ahora, como se comporta surface_total en esta submuestra
+
+summary(train_min$surface_total) #el valor minimo es de 11 y el maximo es de 108.800, querriamos eliminarnos a ambos
+
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#11      70     108     173     189  108800 
+
+#En todo caso, lo importante es ver que realmente estariamos perdiendo muchas observaciones, por lo cual por ahora no usaremos train_min
+####################################################################
+
+
+
+
+##################################################
+#PRIMER INTENTO DE COMPLETAR LAS VARIABLES DE AREA
+###################################################
+
+
 #Antes de eliminar los missings vamos a ver si podemos "completar" un poco la variable de area con lo que haya en 
 #surface_total y en surface_covered
 
@@ -238,14 +266,6 @@ train <- train %>%
 train <- train %>% 
   mutate(area_cubierta = train$surface_covered)
 
-#ahora voy a cambiar los NAs por ceros. 
-####Esto nos da valores falsos en la variable de area para despues imputar los NA, porque nos da que no tenemos NA
-
-
-#train$area_total [is.na(train$area_total)] <- 0
-
-#train$area_cubierta [is.na(train$area_cubierta)] <- 0
-
 #quiero que ambas sean numeric
 
 as.numeric (train$area_total)
@@ -255,14 +275,15 @@ class (train$area_total) #esta sale labelled numeric
 class (train$area_cubierta)
 
 var_lab(train$area_total) = NULL #le quito el label para evitar este problema
-
+as.numeric (train$area_total)
+class (train$area_total) #corregido
 
 #ahora voy a crear una variable que "sume" esas dos
 
 train <- train %>% 
-  mutate(area = if_else( is.na(area_total)==TRUE , train$area_cubierta, train$area_total)) #le pido que mantenga area_total lo mas que pueda a menos que sea cero, entonces que ponga area_cubierta
+  mutate(area = if_else( is.na(area_total)==TRUE , train$area_cubierta, train$area_total)) #le pido que mantenga area_total lo mas que pueda a menos que sea NA, entonces que ponga area_cubierta
 
-#habiendo hecho eso, las variables con solo ceros en "area" son las que realmente son missings >> las que tengan NA, solo esas voy a imputar
+#habiendo hecho eso, las variables con solo NAs en "area" son las que realmente son missings >> las que tengan NA, solo esas voy a imputar
 table(is.na(train$area))  #70.588 missings 
 
 #notar que redujimos un poco porque originalmente teniamos #87.368 missings y #79.845 missings respectivamente
@@ -270,7 +291,6 @@ table(is.na(train$area))  #70.588 missings
 #EN TODO CASO, ESTA PENDIENTE IMPUTARLE VALORES A ESAS 70MIL OBSERVACIONES
 #lo haremos de dos maneras= sacando el dato de la descripcion del anuncio
 # o= imputando por valores de k-nearest neighbors
-# (esto esta pendiente)
 
 
 ######################################################################################
@@ -278,20 +298,8 @@ table(is.na(train$area))  #70.588 missings
 ######################################################################################
 
 
-#QUE PASARIA SI ELIMINAMOS TODOS LOS MISSINGS
 
-train_min <- train %>% drop_na(c("surface_total")) #queda de 27.722 observaciones #de banos quedamos con 165 missings, creo que podemos eliminarlos tambien
-summary(train_min) 
 
-train_min <- train_min %>% drop_na(c("bathrooms")) #queda de 27.557 obs y sin NAs en bathrooms
-summary(train_min)
-
-#ahora, como se comporta surface_total en esta submuestra
-
-summary(train_min$surface_total) #el valor minimo es de 11 y el maximo es de 108.800, querriamos eliminarnos a ambos
-
-#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#11      70     108     173     189  108800 
 
 
 boxplot(train_min$surface_total, 
@@ -335,25 +343,6 @@ train_min %>%
 # TIPO VIVIENDA = 67% apartamento, 33% casa
 
 hist(train_min$price)
-
-#veamos algunas relaciones basicas entre variables
-
-ggplot(data = train_min , mapping = aes(x = surface_total , y = price))+
-  geom_point(col = "tomato" , size = 0.75) #aqui se evidencia que a mayor area, mayor precio
-
-
-ggplot(data = train_min , mapping = aes(x = bathrooms , y = price))+
-  geom_point(col = "tomato" , size = 0.75) #al principio entre mas banos mas precio, pero luego esto se empieza a comportar distinto cuando hay ya demasiados banos, como mas de 5
-#resta la duda de si deberiamos eliminar estos outliers de bano
-summary(train_min$bathrooms)
-
-ggplot(data = train_min , mapping = aes(x = bedrooms , y = price))+
-  geom_point(col = "tomato" , size = 0.75) #pasa lo mismo que con bathrooms, aumenta el precio como hasta 5 bedrooms y luego va disminuyendo
-summary(train_min$bedrooms)
-
-##Nota= esto ya lo estoy sacando con train_min , que es la base sin missings, si en algun momento quisieramos imputarle valores a estos missings habria que modificar esta parte
-#PENDIENTE PORQUE EN LA CLASE DEL MARTES NOS LO VAN A EXPLICAR
-
 
 
 #voy a crear un subset por ciudad
@@ -409,7 +398,6 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 
 
-
 ###PREDICTORS COMING FROM DESCRIPTION ## aqui empezar a hacer lo que vimos en la clase con Eduard (martes) - usar base completa (train)
 
 
@@ -419,13 +407,15 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 ##en train 
 
-#Le indico cual es mi df y la latitud u el codigo que voy a usar >> no entiendo por que queda con una variable menos 
+#Le indico cual es mi df y la latitud u el codigo que voy a usar >> no entiendo por que queda con una variable menos #RTA: PORQUE JUNTA LAT Y LON EN UNA SOLA VARIABLE LLAMADA GEOMETRY
 train_f <- st_as_sf(x=train,coords=c("lon","lat"),crs=4326)
 
-#vuelvo todo minuscula
-str_to_lower(string = train_f$title)
-str_to_lower(string = train_f$description)
-#Creo que no se estan volviendo minusculas y eso es un problema
+train_f <- train_f %>%
+  mutate (titlemin = str_to_lower(string = train_f$title))
+
+train_f <- train_f %>%
+  mutate (descriptionmin = str_to_lower(string = train_f$description))
+
 
 #####AREA########
 #Revisar los missing values de las areas
@@ -469,6 +459,18 @@ table(is.na(train_f$area)) #tiene 48580 NA, imputamos 22008
 
 table(train_f$area)
 sum(table(train_f$area))
+
+view(train_f$area)
+
+str_extract (string = train_f$area, ) ##pendiente terminar
+
+
+
+#pendiente:
+
+#cambiar en la variable train_f$area todas las comas por puntos
+#despues, extraer solo los numeros
+
 
 #####BANOS########
 table(is.na(train_f$bathrooms)) #30074 NA
@@ -558,4 +560,5 @@ leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
 house_censo = st_join(house_mnz,mnz_censo)
 colnames(house_censo)
 
+view(train_f$description)
 
