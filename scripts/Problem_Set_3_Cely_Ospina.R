@@ -38,7 +38,8 @@ p_load(tidyverse,    #Para limpiar los datos
        sf,
        leaflet,
        tmaptools,
-       osmdata) #por ahora llame todas las del problem set 2
+       osmdata, 
+       skim) #por ahora llame todas las del problem set 2
 
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
@@ -237,11 +238,13 @@ train <- train %>%
 train <- train %>% 
   mutate(area_cubierta = train$surface_covered)
 
-#ahora voy a cambiar los NAs por ceros
+#ahora voy a cambiar los NAs por ceros. 
+####Esto nos da valores falsos en la variable de area para despues imputar los NA, porque nos da que no tenemos NA
 
-train$area_total [is.na(train$area_total)] <- 0
 
-train$area_cubierta [is.na(train$area_cubierta)] <- 0
+#train$area_total [is.na(train$area_total)] <- 0
+
+#train$area_cubierta [is.na(train$area_cubierta)] <- 0
 
 #quiero que ambas sean numeric
 
@@ -257,11 +260,10 @@ var_lab(train$area_total) = NULL #le quito el label para evitar este problema
 #ahora voy a crear una variable que "sume" esas dos
 
 train <- train %>% 
-  mutate(area = if_else( train$area_total==0 , train$area_cubierta, train$area_total)) #le pido que mantenga area_total lo mas que pueda a menos que sea cero, entonces que ponga area_cubierta
+  mutate(area = if_else( is.na(area_total)==TRUE , train$area_cubierta, train$area_total)) #le pido que mantenga area_total lo mas que pueda a menos que sea cero, entonces que ponga area_cubierta
 
-#habiendo hecho eso, las variables con solo ceros en "area" son las que realmente son missings
-
-sum(train$area == '0') #70.588 missings 
+#habiendo hecho eso, las variables con solo ceros en "area" son las que realmente son missings >> las que tengan NA, solo esas voy a imputar
+table(is.na(train$area))  #70.588 missings 
 
 #notar que redujimos un poco porque originalmente teniamos #87.368 missings y #79.845 missings respectivamente
 
@@ -270,6 +272,10 @@ sum(train$area == '0') #70.588 missings
 # o= imputando por valores de k-nearest neighbors
 # (esto esta pendiente)
 
+
+######################################################################################
+######################################################################################
+######################################################################################
 
 
 #QUE PASARIA SI ELIMINAMOS TODOS LOS MISSINGS
@@ -395,7 +401,9 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 
 
-
+######################################################################################
+######################################################################################
+######################################################################################
                  
 ###PREDICTORS COMING FROM EXTERNAL SOURCES
 
@@ -411,59 +419,120 @@ chapinero <- getbb(place_name = "UPZ Chapinero, Bogota",
 leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
 
 
-
-
 ##############################
 #######Imputar valores########
 ##############################
 
-#vuelvo todo minuscula
-str_to_lower(string = train$title)
-str_to_lower(string = train$description)
+##en train 
 
-#Le indico cual es mi df y la latitud u el codigo que voy a usar 
+#Le indico cual es mi df y la latitud u el codigo que voy a usar >> no entiendo por que queda con una variable menos 
 train_f <- st_as_sf(x=train,coords=c("lon","lat"),crs=4326)
 
-table(train_f$title)
+#vuelvo todo minuscula
+str_to_lower(string = train_f$title)
+str_to_lower(string = train_f$description)
+#Creo que no se estan volviendo minusculas y eso es un problema
 
-ch = "chapinero"## pattern
-p = "el poblado"
-p2= "poblado"
-
-
+#####AREA########
 #Revisar los missing values de las areas
-table(is.na(train_f$area))
+table(is.na(train_f$area)) #tiene 70588 NA
 
+#Patrones para imputar metraje
+x1 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2" ## pattern
+x2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
+x2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts2"
+x3 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
+x4 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2"
+x5 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2"
+x6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m²"
 
+x7 = "[:space:]+[:digit:]+[:space:]+m2"
+x8 = "[:space:]+[:digit:]+[:space:]+mts"
+x9 = "[:space:]+[:digit:]+[:space:]+mts2"
+x10 = "[:space:]+[:digit:]+[:space:]+metros"
+x11 = "[:space:]+[:digit:]+[:space:]+m2"
+x12 = "[:space:]+[:digit:]+[:space:]+mt2"
+x13 = "[:space:]+[:digit:]+[:space:]+m²"
 
-x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2" ## pattern
-x2 = "[:space:]+[:digit:]+[:space:]+m2"
-y = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
-y2 = "[:space:]+[:digit:]+[:space:]+metros"
-z = "[:space:]+[:digit:]+[:space:]+mts"
-z2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
+x14 = "[:space:]+[:digit:]+m2"
+x15 = "[:space:]+[:digit:]+mts"
+x16 = "[:space:]+[:digit:]+mts2"
+x17 = "[:space:]+[:digit:]+metros"
+x18 = "[:space:]+[:digit:]+m2"
+x19 = "[:space:]+[:digit:]+mt2"
+x20 = "[:space:]+[:digit:]+m²"
 
-
+#imputamos los valores de area que estan NA con los patrones 
 train_f = train_f %>% 
   mutate(area = ifelse(is.na(area)==T,
-                              str_extract(string=train_f$description , pattern=y),
-                              area))
+                       str_extract(string=train_f$description , pattern= 
+                       paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
+                              x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",x20)),
+                       area))
 
+#verificamos como cambio NA
+table(is.na(train_f$area)) #tiene 48580 NA, imputamos 22008
 
+table(train_f$area)
+sum(table(train_f$area))
+
+#####BANOS########
+table(is.na(train_f$bathrooms)) #30074 NA
+
+#patrones para banos
+y1 = "[:space:]+[:digit:]+[:space:]+ba"
+y2 = "[:space:]+[:digit:]+ba"
+
+#imputar los NA de baños con los patrones
 train_f = train_f %>% 
-  mutate(new_surface = str_extract(string=train_f$description , pattern= paste0(x,"|",x2,"|",y,"|",y2,"|",z,"|",z2)))
-table(train_f$new_surface)
+  mutate(bathrooms = ifelse(is.na(bathrooms)==T,
+                       str_extract(string=train_f$description , pattern= 
+                       paste0(y1,"|",y2)),
+                       bathrooms))
+table(is.na(train_f$bathrooms)) #20934 NA, imputamos 9140. las observaciones imputadas quedan con el ba, no se si eso afecte 
 
-table(is.na(train_f$area))
+######NIVEL##### 
+z1 = "[:space:]+[:alpha:]+[:space:]+piso"
+z2 = "piso+[:space:]+[:alpha:]+[:space:]"
+z3 = "[:space:]+[:digit:]+[:alpha:]+piso"
+w1 = "penthouse"
+w2 = "pent-house"
+w3 = "pent house"
+
+#creamos una nueva variable >> no estoy segura, algunos si los toma bien pero tambien toma cosas como el tipo de piso o cosas que escriben despues que no tienen que ver 
+train_f = train_f %>% 
+  mutate(nivel = str_extract(string=train_f$description , pattern= paste0(z1,"|",z2,"|",z3,"|",w1,"|",w2,"|",w3)))
+table(train_f$nivel)
+table(is.na(train_f$nivel)) #75611 NA, no se si valga la pena
+
+####Estrato##### 
+v1 = "estrato+[:space:]+[:digit:]+[:space:]"
+v2 = "estrato+[:digit:]+[:space:]"
+
+#creamos nueva variable
+train_f = train_f %>% 
+  mutate(estrato = str_extract(string=train_f$description , pattern= paste0(v1,"|",v2)))
+table(train_f$estrato)
+table(is.na(train_f$estrato)) #106210 NA >> creo que esta es mejor sacarla del DANE
 
 
-#Separar las bases entre Medellin y Bogota
+##filtrar chapinero y el poblado? > creo que al ser barrios con precios altos podriamos tener problemas al entrenar con todos los demas 
+#Se podria filtrar como lo de imputar texto, buscar en title chapinero y el poblado
+
+#Separar las bases entre Medellin y Bogota 
 train_med <- train
 train_med <- train_med [!(train_med$l3=="Bogotá D.C"),] #21.356 obs #medellin, (6.024 quitando NA) 
 
 train_bog <- train
 train_bog <- train_bog [(train_bog$l3=="Bogotá D.C"),] #86.211 obs #bogota, (27.035 quitando NA)
 
+
+
+table(train_f$title)
+
+ch = "chapinero"## pattern
+p = "el poblado"
+p2= "poblado"
 
 
 
