@@ -225,28 +225,6 @@ train %>%
 # TIPO VIVIENDA = 76% apartamento, 24% casa
 
 
-###################################################################
-#QUE PASARIA SI ELIMINAMOS TODOS LOS MISSINGS DE TRAIN (LA ORIGINAL)
-
-train_min <- train %>% drop_na(c("surface_total")) #queda de 27.722 observaciones #de banos quedamos con 165 missings, creo que podemos eliminarlos tambien
-summary(train_min) 
-
-train_min <- train_min %>% drop_na(c("bathrooms")) #queda de 27.557 obs y sin NAs en bathrooms
-summary(train_min)
-
-#ahora, como se comporta surface_total en esta submuestra
-
-summary(train_min$surface_total) #el valor minimo es de 11 y el maximo es de 108.800, querriamos eliminarnos a ambos
-
-#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#11      70     108     173     189  108800 
-
-#En todo caso, lo importante es ver que realmente estariamos perdiendo muchas observaciones, por lo cual por ahora no usaremos train_min
-####################################################################
-
-
-
-
 ##################################################
 #PRIMER INTENTO DE COMPLETAR LAS VARIABLES DE AREA
 ###################################################
@@ -297,104 +275,76 @@ table(is.na(train$area))  #70.588 missings
 ######################################################################################
 ######################################################################################
 
+#PRIMERO: CREAR LOS POLIGONOS DE CHAPINERO Y DE EL POBLADO
 
-
-
-
-
-boxplot(train_min$surface_total, 
-        ylab = "Area total"
-)
-
-#entonces vamos a reducirle colas
-
-lower_area<-0.01
-upper_area<-0.99
-
-lower_bound_atr<- quantile(train_min$surface_total, lower_area) 
-lower_bound_atr #35 m2
-
-upper_bound_atr <- quantile(train_min$surface_total, upper_area) 
-upper_bound_atr #936 m2
-
-
-train_min <- train_min %>% subset(surface_total >= lower_bound_atr) 
-train_min <- train_min %>% subset(surface_total <= upper_bound_atr) #queda de 27.035 obs
-
-
-boxplot(train_min$surface_total, 
-        ylab = "Area total"
-)
-
-
-#veamos como queda el summary con esta nueva distribucion
-
-train_min %>%
-  select(price, start_date, l2, bedrooms, bathrooms, surface_total, property_type) %>%
-  tbl_summary()
-
-#de aqui (train_min) obtenemos a grandes rasgos lo siguiente=
-
-# PRECIO PROMEDIO = 445 millones #al quitar las casas mas grandes, redujimos un poco el precio promedio
-# DEPARTAMENTOS = 77% estan en Cundinamarca y 23% en Antioquia ###
-# CUARTOS = En promedio hay 3
-# BANOS = En promedio hay 2 (ya no hay missings)
-# AREA TOTAL = Promedio 107 m2 (ya no hay missings)
-# TIPO VIVIENDA = 67% apartamento, 33% casa
-
-hist(train_min$price)
-
-
-#voy a crear un subset por ciudad
-
-train_med <- train_min
-train_med <- train_med [!(train_med$l3=="Bogotá D.C"),] #6.024 obs #medellin
-
-train_bog <- train_min
-train_bog <- train_bog [(train_bog$l3=="Bogotá D.C"),] #27.035 obs #bogota
-
-#espacializar
-
-bogota <- st_as_sf(x=train_bog,coords=c("lon","lat"),crs=4326)
-class(bogota)
-bogota
-
-leaflet() %>% addCircleMarkers(data=bogota) #visualizacion dinamica
-
-ggplot()+
-  geom_sf(data=bogota) +
-  theme_bw() +
-  theme(axis.title =element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text = element_text(size=6))    #visualizacion a modo de plot 
-
-#vemos en las dos salidas anteriores que hay datos para toda la ciudad, no solamente para Chapinero
-
-
-#voy a traer la informacion de las upz
+#CHAPINERO
 
 upla<-read_sf("stores/upla/UPla.shp") #totalidad de la ciudad
 
 up_chapinero <- upla %>% filter(UPlNombre
                                 %in%c("EL REFUGIO", "PARDO RUBIO", "CHICO LAGO", "CHAPINERO")) #aqui agarro las upz de chapinero (localidad)
 
-bar <- opq(bbox = st_bbox(up_chapinero)) %>% #cuando hacemos esta st_bbox de solo chapinero, ya no nos salen los puntos de toda la ciudad sino solo dentro de esa area
-  add_osm_feature(key = "amenity", value = "bar") %>%
-  osmdata_sf() %>% .$osm_points %>% select(osm_id,name)
+up_chapinero <- st_transform(up_chapinero, 4326)
 
-bar %>% head() 
+chapinero <- getbb(place_name = "UPZ Chapinero, Bogota", 
+                   featuretype = "boundary:administrative", 
+                   format_out = "sf_polygon") %>% .$multipolygon #aca se pone lo de multipolygon exactamente porque tiene un pedazo "suelto" (San Luis)
 
-leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que aqui esta hecho con bares a modo de ejemplo
+leaflet() %>% addTiles() %>% addPolygons(data=chapinero) #la diferencia es que esta incluye la UPZ San Luis #sale de OSM
+leaflet() %>% addTiles() %>% addPolygons(data=up_chapinero) #esta solo incluye las 4 UPZ antes de subir a la calera #sale de Ignacio
 
 
+#EL POBLADO
+
+poblado <- getbb(place_name = "Comuna 14 - El Poblado", 
+                   featuretype = "boundary:administrative", 
+                   format_out = "sf_polygon") 
+
+leaflet() %>% addTiles() %>% addPolygons(data=poblado)
+
+
+#SEGUNDO
+#Ahora, vamos a realizar el corte de las observaciones de train
+#como ya tenemos chapinero y poblado creadas, hay que volver train "espacial" en solo esas areas
+
+#ESPACIALIZAR TRAIN
+train_f <- st_as_sf(x=train,coords=c("lon","lat"),crs=4326)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_f, col="red") #salen las obs de todo el pais
+
+#CHAPINERO
+
+#version con san luis
+train_chap <- st_crop (train_f, chapinero)
+leaflet() %>% addTiles() %>% addPolygons(data=chapinero) %>% addCircleMarkers(data=train_chap, col="red") #funciona
+
+#version sin san luis
+train_upchap <- st_crop (train_f, up_chapinero)
+leaflet() %>% addTiles() %>% addPolygons(data=up_chapinero) %>% addCircleMarkers(data=train_upchap, col="red") #funciona tambien
+#LA VERDAD PROPONGO GUIARNOS POR UP_CHAPINERO PORQUE SAN LUIS ES UN BARRIO MUY DISTINTO AL RESTO DE LA LOCALIDAD Y PODRIA ESTARNOS ARRASTRANDO CON INFO QUE NO ES
+
+
+#POBLADO
+train_pobl <- st_crop (train_f , poblado)
+leaflet() %>% addTiles() %>% addPolygons(data=poblado) %>% addCircleMarkers(data=train_pobl, col="red") #SALE AL REVES, PENDIENTE AYUDA POR SLACK
 
 
 ######################################################################################
 ######################################################################################
 ######################################################################################
                  
-###PREDICTORS COMING FROM EXTERNAL SOURCES
+#MANZANAS BOGOTA
+
+mbog <- read_sf ("stores/manzanasbogota/MGN_URB_MANZANA.shp")
+st_crs(mbog)<-4326  
+
+mchap <- st_crop (mbog, up_chapinero)
+
+leaflet() %>% addTiles() %>% addPolygons(data=mchap , color="red") %>% addCircles(data=train_upchap)
+
+
+#MANZANAS MEDELLIN
+
+
 
 
 
@@ -561,4 +511,8 @@ house_censo = st_join(house_mnz,mnz_censo)
 colnames(house_censo)
 
 view(train_f$description)
+
+
+
+###PREDICTORS COMING FROM EXTERNAL SOURCES
 
