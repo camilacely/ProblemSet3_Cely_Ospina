@@ -402,7 +402,7 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 
 
-###PREDICTORS COMING FROM DESCRIPTION
+###PREDICTORS COMING FROM DESCRIPTION ## aqui empezar a hacer lo que vimos en la clase con Eduard (martes) - usar base completa (train)
 
 
 
