@@ -50,8 +50,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet2_Cely_Ospina")
-setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -404,7 +404,65 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=bar , col="red")  #notar que 
 
 ###PREDICTORS COMING FROM DESCRIPTION ## aqui empezar a hacer lo que vimos en la clase con Eduard (martes) - usar base completa (train)
 
+chapinero <- getbb(place_name = "UPZ Chapinero, Bogota", 
+                   featuretype = "boundary:administrative", 
+                   format_out = "sf_polygon") %>% .$multipolygon
 
+leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
+
+
+
+
+##############################
+#######Imputar valores########
+##############################
+
+#vuelvo todo minuscula
+str_to_lower(string = train$title)
+str_to_lower(string = train$description)
+
+#Le indico cual es mi df y la latitud u el codigo que voy a usar 
+train_f <- st_as_sf(x=train,coords=c("lon","lat"),crs=4326)
+
+table(train_f$title)
+
+ch = "chapinero"## pattern
+p = "el poblado"
+p2= "poblado"
+
+
+#Revisar los missing values de las areas
+table(is.na(train_f$area))
+
+
+
+x = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2" ## pattern
+x2 = "[:space:]+[:digit:]+[:space:]+m2"
+y = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
+y2 = "[:space:]+[:digit:]+[:space:]+metros"
+z = "[:space:]+[:digit:]+[:space:]+mts"
+z2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
+
+
+train_f = train_f %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                              str_extract(string=train_f$description , pattern=y),
+                              area))
+
+
+train_f = train_f %>% 
+  mutate(new_surface = str_extract(string=train_f$description , pattern= paste0(x,"|",x2,"|",y,"|",y2,"|",z,"|",z2)))
+table(train_f$new_surface)
+
+table(is.na(train_f$area))
+
+
+#Separar las bases entre Medellin y Bogota
+train_med <- train
+train_med <- train_med [!(train_med$l3=="Bogotá D.C"),] #21.356 obs #medellin, (6.024 quitando NA) 
+
+train_bog <- train
+train_bog <- train_bog [(train_bog$l3=="Bogotá D.C"),] #86.211 obs #bogota, (27.035 quitando NA)
 
 
 
