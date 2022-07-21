@@ -51,8 +51,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -373,35 +373,44 @@ table(is.na(train_f$area)) #tiene 70588 NA
 
 #Patrones para imputar metraje
 x1 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2" ## pattern
-x2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
-x2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts2"
-x3 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
-x4 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2"
-x5 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2"
-x6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m²"
+x2 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt"
+x3 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
+x4 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts2"
+x5 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts 2"
+x6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
+x7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2"
+x8 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2"
+x9 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m+²"
 
-x7 = "[:space:]+[:digit:]+[:space:]+m2"
-x8 = "[:space:]+[:digit:]+[:space:]+mts"
-x9 = "[:space:]+[:digit:]+[:space:]+mts2"
-x10 = "[:space:]+[:digit:]+[:space:]+metros"
-x11 = "[:space:]+[:digit:]+[:space:]+m2"
-x12 = "[:space:]+[:digit:]+[:space:]+mt2"
-x13 = "[:space:]+[:digit:]+[:space:]+m²"
+x10 = "[:space:]+[:digit:]+[:space:]+m2"
+x11= "[:space:]+[:digit:]+[:space:]+mts"
+x12 = "[:space:]+[:digit:]+[:space:]+mts2"
+x13 = "[:space:]+[:digit:]+[:space:]+mts 2"
+x14 = "[:space:]+[:digit:]+[:space:]+metros"
+x15 = "[:space:]+[:digit:]+[:space:]+m2"
+x16 = "[:space:]+[:digit:]+[:space:]+mt2"
+x17 = "[:space:]+[:digit:]+[:space:]+mt"
+x18 = "[:space:]+[:digit:]+[:space:]+m+²"
 
-x14 = "[:space:]+[:digit:]+m2"
-x15 = "[:space:]+[:digit:]+mts"
-x16 = "[:space:]+[:digit:]+mts2"
-x17 = "[:space:]+[:digit:]+metros"
-x18 = "[:space:]+[:digit:]+m2"
-x19 = "[:space:]+[:digit:]+mt2"
-x20 = "[:space:]+[:digit:]+m²"
+x19 = "[:space:]+[:digit:]+m2"
+x20 = "[:space:]+[:digit:]+mts"
+x21 = "[:space:]+[:digit:]+mts2"
+x22 = "[:space:]+[:digit:]+mts 2"
+x23 = "[:space:]+[:digit:]+metros"
+x24 = "[:space:]+[:digit:]+m2"
+x25 = "[:space:]+[:digit:]+mt2"
+x26 = "[:space:]+[:digit:]+mt 2"
+x27 = "[:space:]+[:digit:]+m+²"
+
+
 
 #imputamos los valores de area que estan NA con los patrones 
 train_f = train_f %>% 
   mutate(area = ifelse(is.na(area)==T,
                        str_extract(string=train_f$description , pattern= 
                        paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
-                              x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",x20)),
+                              x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
+                              x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)),
                        area))
 
 #verificamos como cambio NA
@@ -426,40 +435,173 @@ str_extract (string = train_f$area, ) ##pendiente terminar
 table(is.na(train_f$bathrooms)) #30074 NA
 
 #patrones para banos
-y1 = "[:space:]+[:digit:]+[:space:]+ba"
-y2 = "[:space:]+[:digit:]+ba"
+y1 = "[:space:]+[:digit:]+[:space:]+baños"
+y2 = "[:space:]+[:digit:]+[:space:]+banos"
+y3 = "[:space:]+[:digit:]+[:space:]+baos"
+y4 = "[:space:]+[:digit:]+baños"
+y5 = "[:space:]+[:digit:]+banos"
+y6 = "[:space:]+con baño+[:space:]"
+y7 = "[:space:]+un baño+[:space:]"
+y8 = "[:space:]+dos baños+[:space:]"
+y9 = "[:space:]+dos baños+[:punct:]"
+y10= "[:space:]+tres baños+[:space:]"
+y11= "[:space:]+tres baños+[:punct:]"
+y12= "[:space:]+cuatro baños+[:space:]"
+y13= "[:space:]+cuatro baños+[:punct:]"
+
+
 
 #imputar los NA de baños con los patrones
 train_f = train_f %>% 
   mutate(bathrooms = ifelse(is.na(bathrooms)==T,
                        str_extract(string=train_f$description , pattern= 
-                       paste0(y1,"|",y2)),
+                       paste0(y1,"|",y2,"|",y3,"|",y4,"|",y5,"|",y6,"|",y7,"|",y8,"|",y9,"|",y10,"|",y11,"|",y12,"|",y13)),
                        bathrooms))
 table(is.na(train_f$bathrooms)) #20934 NA, imputamos 9140. las observaciones imputadas quedan con el ba, no se si eso afecte 
 
-######NIVEL##### 
-z1 = "[:space:]+[:alpha:]+[:space:]+piso"
-z2 = "piso+[:space:]+[:alpha:]+[:space:]"
-z3 = "[:space:]+[:digit:]+[:alpha:]+piso"
-w1 = "penthouse"
-w2 = "pent-house"
-w3 = "pent house"
+######NIVEL##### >> aqui no estoy segura, en medellin los ed pueden tener hasta 30pisos
+w1 = "[:space:]+piso+[:space:]+[:digit:]"
+w2 = "piso+[:space:]+[:digit:]"
+w3 = "[:space:]+piso+[:space:]+[:digit:]+[:punct]"
+w4 = "[:space:]+primer piso+[:space:]"
+w5 = "[:space:]+segundo piso+[:space:]"
+w6 = "[:space:]+tercer piso+[:space:]"
+w7 = "[:space:]+cuarto piso+[:space:]"
+w8 = "[:space:]+quinto piso+[:space:]"
+w9 = "[:space:]+sexto piso+[:space:]"
+w10 = "[:space:]+septimo piso+[:space:]"
+w11 = "[:space:]+octavo piso+[:space:]"
+w12 = "[:space:]+noveno piso+[:space:]"
+w13 = "[:space:]+decimo piso+[:space:]"
+w14 = "[:space:]+primer piso+[:punct:]"
+w15 = "[:space:]+segundo piso+[:punct:]"
+w16 = "[:space:]+tercer piso+[:punct:]"
+w17 = "[:space:]+cuarto piso+[:punct:]"
+w18 = "[:space:]+quinto piso+[:punct:]"
+w19 = "[:space:]+sexto piso+[:punct:]"
+w20 = "[:space:]+septimo piso+[:punct:]"
+w21 = "[:space:]+octavo piso+[:punct:]"
+w22 = "[:space:]+noveno piso+[:punct:]"
+w23 = "[:space:]+decimo piso+[:punct:]"
+
 
 #creamos una nueva variable >> no estoy segura, algunos si los toma bien pero tambien toma cosas como el tipo de piso o cosas que escriben despues que no tienen que ver 
 train_f = train_f %>% 
-  mutate(nivel = str_extract(string=train_f$description , pattern= paste0(z1,"|",z2,"|",z3,"|",w1,"|",w2,"|",w3)))
+  mutate(nivel = str_extract(string=train_f$description , pattern= paste0(w1,"|",w2,"|",w3,"|",w4,"|",w5,"|",w6,"|",w7,"|",w8,"|",w9,"|",w10,"|",w11,"|",w12,"|",
+                                                                          w13,"|",w14,"|",w15,"|",w16,"|",w17,"|",w18,"|",w19,"|",w20,"|",w21,"|",w22,"|",w23)))
 table(train_f$nivel)
 table(is.na(train_f$nivel)) #75611 NA, no se si valga la pena
 
-####Estrato##### 
-v1 = "estrato+[:space:]+[:digit:]+[:space:]"
-v2 = "estrato+[:digit:]+[:space:]"
+#####balcon/terraza/bbq####
+v1 = "[:space:]+terraza+[:space:]"
+v2 = "[:space:]+tiene terraza+[:space:]"
+v3 = "[:space:]+balcón+[:space:]"
+v4 = "[:space:]+tiene balcon+[:space:]"
+v5 = "[:space:]+balcn+[:space:]"
+v6 = "[:space:]+tiene balcn+[:space:]"
+v7 = "[:space:]+bbq+[:space:]"
+v8 = "[:space:]+tiene bbq+[:space:]"
+v9 = "[:space:]+terraza+[:punct:]"
+v10= "[:space:]+balcón+[:punct:]"
+v11= "[:space:]+balcon+[:punct:]"
+v12= "[:space:]+balcn+[:punct:]"
+v13= "[:space:]+bbq+[:punct:]"
 
-#creamos nueva variable
-train_f = train_f %>% 
-  mutate(estrato = str_extract(string=train_f$description , pattern= paste0(v1,"|",v2)))
-table(train_f$estrato)
-table(is.na(train_f$estrato)) #106210 NA >> creo que esta es mejor sacarla del DANE
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(nivel = str_extract(string=train_f$description , pattern= paste0(v1,"|",v2,"|",v3,"|",v4,"|",v5,"|",v6,"|",
+                                                                          v7,"|",v8,"|",v9,"|",v10,"|",v11,"|",v12,"|",v13)))
+table(train_f$nivel)
+table(is.na(train_f$nivel))
+
+train_f <- train_f %>% 
+  mutate(nivel = if_else( is.na(area_total)==TRUE,0,1)) 
+
+###duplex/penthouse/altillo##### extras 
+u1 = "[:space:]+duplex+[:space:]"
+u2 = "[:space:]+penthouse+[:space:]"
+u3 = "[:space:]+pent house+[:space:]"
+u4 = "[:space:]+pent-house+[:space:]"
+u5 = "[:space:]+altillo+[:space:]"
+u6 = "[:space:]+duplex+[:punct:]"
+u7 = "[:space:]+penthouse+[:punct:]"
+u8 = "[:space:]+pent house+[:punct:]"
+u9 = "[:space:]+pent-house+[:punct:]"
+u10 = "[:space:]+altillo+[:punct:]"
+
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(extras = str_extract(string=train_f$description , pattern= paste0(u1,"|",u2,"|",u3,"|",u4,"|",u5,"|",
+                                                                          u6,"|",u7,"|",u8,"|",u9,"|",u10)))
+table(train_f$extras)
+table(is.na(train_f$extras))
+
+train_f <- train_f %>% 
+  mutate(extras = if_else( is.na(area_total)==TRUE,0,1)) 
+
+###moderno/remodelado/renovado
+t1 = "[:space:]+moderno+[:space:]"
+t2 = "[:space:]+remodelado+[:space:]"
+t3 = "[:space:]+renovado+[:space:]"
+t4 = "[:space:]+moderno+[:punct:]"
+t5 = "[:space:]+remodelado+[:punct:]"
+t6 = "[:space:]+renovado+[:punct:]"
+
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(renov = str_extract(string=train_f$description , pattern= paste0(t1,"|",t2,"|",t3,"|",t4,"|",t5,"|",t6)))
+table(train_f$renov)
+table(is.na(train_f$renov))
+
+train_f <- train_f %>% 
+  mutate(renov = if_else( is.na(area_total)==TRUE,0,1)) 
+
+###vista/exterior
+t1 = "[:space:]+vista+[:space:]"
+t2 = "[:space:]+exterior+[:space:]"
+t3 = "[:space:]+vista+[:punct:]"
+t4 = "[:space:]+exterior+[:punct:]"
+
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(vista = str_extract(string=train_f$description , pattern= paste0(t1,"|",t2,"|",t3,"|",t4)))
+table(train_f$vista)
+table(is.na(train_f$vista))
+
+train_f <- train_f %>% 
+  mutate(vista = if_else( is.na(area_total)==TRUE,0,1)) 
+
+####tiene parqueadero
+s1 = "[:space:]+parqueadero+[:space:]"
+s2 = "[:space:]+parqueaderos+[:space:]"
+s3 = "[:space:]+parqueadero+[:punct:]"
+s4 = "[:space:]+parqueaderos+[:punct:]"
+
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(parq = str_extract(string=train_f$description , pattern= paste0(s1,"|",s2,"|",s3,"|",s4)))
+table(train_f$parq)
+table(is.na(train_f$parq))
+
+train_f <- train_f %>% 
+  mutate(parq = if_else( is.na(area_total)==TRUE,0,1)) 
+
+
+#####tiene ascensor
+r1 = "[:space:]+ascensor+[:space:]"
+r2 = "[:space:]+ascensores+[:space:]"
+r3 = "[:space:]+ascensor+[:punct:]"
+r4 = "[:space:]+ascensores+[:punct:]"
+
+#nueva variable 
+train_f <- train_f %>% 
+  mutate(ascen = str_extract(string=train_f$description , pattern= paste0(r1,"|",r2,"|",r3,"|",r4)))
+table(train_f$ascen)
+table(is.na(train_f$ascen))
+
+train_f <- train_f %>% 
+  mutate(ascen = if_else( is.na(area_total)==TRUE,0,1)) 
+
 
 
 ####info DANE#### >>> tendriamos que traer manzanas y no entiendo como se limpia el archivo de manzanas 
