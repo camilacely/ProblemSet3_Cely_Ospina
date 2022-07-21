@@ -328,6 +328,22 @@ train_pobl <- st_crop (train_f , poblado)
 leaflet() %>% addTiles() %>% addPolygons(data=poblado) %>% addCircleMarkers(data=train_pobl, col="red") #SALE AL REVES, PENDIENTE AYUDA POR SLACK
 
 
+train_pobla <- train_f[poblado,]
+
+leaflet() %>% addTiles() %>% addPolygons(data=poblado) %>% addCircleMarkers(data=train_pobla, col="red") #SALE AL REVES, PENDIENTE AYUDA POR SLACK
+
+
+#voy a intentar hacerlo a partir de un XML que saque de medellin.gov.co
+
+install.packages("XML")
+
+library("XML")
+library("methods")
+
+xml_medellin <- xmlParse(file = "stores/metadata_medellin.xml")
+
+print(xml_medellin)
+
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -344,8 +360,229 @@ leaflet() %>% addTiles() %>% addPolygons(data=mchap , color="red") %>% addCircle
 
 #MANZANAS MEDELLIN
 
+mmed <- read_sf ("stores/manzanasantioquia/MGN_URB_MANZANA.shp")
+st_crs(mmed)<-4326  
+
+sf_use_s2(FALSE)
+mpobl <- st_crop (mmed, poblado)
+
+#leaflet() %>% addTiles() %>% addPolygons(data=mmed , color="red") #no funciona precisamente porque el poligono poblado no esta cortando bien
+#PENDIENTE ARREGLAR
 
 
+######################################################################################
+######################################################################################
+######################################################################################
+
+###PREDICTORS COMING FROM EXTERNAL SOURCES
+
+#Ahora si vamos a ver como se comporta, por ejemplo, estar cerca a bares, restaurantes, etc
+
+#CHAPINERO
+
+opq(bbox = getbb ("UPZ Chapinero, Bogota")) #para solo chapinero
+
+available_features()
+
+available_tags("amenity") 
+#aqui voy a poner los que creo que pueden ser relevantes
+
+#"bar"
+#"brothel"
+#"bus_station"
+#"cafe"
+#"cinema"
+#"gambling"
+#"gym"
+#"hospital"
+#"love_hotel"
+#"marketplace"
+#"public_building"
+#"restaurant"
+#"school"
+#"theatre"
+#"university"
+
+#BAR
+bar_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="bar")
+
+class(bar_chap)
+
+bar_chap <- bar_chap %>% osmdata_sf() 
+bar_chap
+
+bar_chap <- bar_chap$osm_points %>% select(osm_id,amenity)
+bar_chap
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=bar_chap , color="red")
+#intuicion= buena variable porque esta muy localizada en ciertas zonas 
+
+#BROTHEL
+brothel_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="brothel")
+
+brothel_chap <- brothel_chap %>% osmdata_sf() 
+
+brothel_chap <- brothel_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=brothel_chap , color="red") 
+#intuicion= me sale UNO pero veremos si es significativo
+
+
+#BUS STATION
+bus_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="bus_station")
+
+bus_chap <- bus_chap %>% osmdata_sf() 
+
+bus_chap <- bus_chap$osm_points %>% select(osm_id,amenity)
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=bus_chap , color="red")
+#intuicion= creo que va a resultar significativo porque esta muy marcado por eje vial de la caracas
+
+
+#CAFE
+cafe_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="cafe")
+
+cafe_chap <- cafe_chap %>% osmdata_sf() 
+
+cafe_chap <- cafe_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=cafe_chap , color="red")
+#intucion= este NO creo que sirva porque esta demasiado bien distribuido en todo el barrio, casi no nos dice nada
+
+#CINEMA
+cine_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="cinema")
+
+cine_chap <- cine_chap %>% osmdata_sf() 
+
+cine_chap <- cine_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=cine_chap , color="red")
+#intuicion= puede ser buena porque hay pocos en el barrio y puede dar cuenta de centros comerciales y de areas de ocio
+
+
+#GAMBLING= 0 points
+#GYM= 0 points
+
+#HOSPITAL
+hosp_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="hospital")
+
+hosp_chap <- hosp_chap %>% osmdata_sf() 
+
+hosp_chap <- hosp_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hosp_chap , color="red")
+#intuicion= puede estar dando significativo porque se agrupan mucho hacia el sur de la localidad y hacia la caracas
+
+
+#LOVE_HOTEL = 0 points (lastima porque creo que era buena variable)
+#MARKETPLACE = 0 points
+#PUBLIC BUILDING = 4 points pero no me quiere dejar sacarlos
+
+#RESTAURANT
+rest_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="restaurant")
+
+rest_chap <- rest_chap %>% osmdata_sf() 
+
+rest_chap <- rest_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=rest_chap , color="red")
+#intuicion= pasa lo mismo que con cafe, hay por todas partes en este barrio, 
+#por eso NO creo que nos ayude a predecir bien los precios
+#PERO la voy a dejar porque igual si uno hace zoom si se agrupa en ciertos corredores
+
+
+#SCHOOL
+sch_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="school")
+
+sch_chap <- sch_chap %>% osmdata_sf() 
+
+sch_chap <- sch_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=sch_chap , color="red")
+#intuicion= ambivalente, creo que si puede servir pero lo malo es que tiene mezclados colegios de distintas "gamas" entonces se pueden confundir las senales
+
+
+#THEATRE
+th_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="theatre")
+
+th_chap <- th_chap %>% osmdata_sf() 
+
+th_chap <- th_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=th_chap , color="red")
+#intuicion= no hay muchos, creo que podria estar mandando alguna senal
+
+#UNIVERSITY
+uni_chap <- opq(bbox = st_bbox(up_chapinero)) %>%
+  add_osm_feature(key="amenity", value="university")
+
+uni_chap <- uni_chap %>% osmdata_sf() 
+
+uni_chap <- uni_chap$osm_points %>% select(osm_id,amenity)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=uni_chap , color="red")
+#intuicion= debe ser buena variable porque hay muchas pero estan MUY concentradas en ciertos corredores
+
+#CONCLUSION
+#MEJORES VARIABLES QUE VAMOS A UTILIZAR
+
+#"bar"
+#"brothel"
+#"bus_station"
+#"cinema"
+#"hospital"
+#"restaurant"
+#"school"
+#"theatre"
+#"university"
+
+#LAS METEREMOS TODAS Y QUE RANDOM FORESTS DECIDA EL RESTO
+
+#eso de arriba eran amenities, ahora quiero ver parques que hacen parte de "leisure"
+
+#PARK
+park_chap <- opq(bbox = st_bbox(up_chapinero)) %>% 
+  add_osm_feature(key = "leisure", value = "park") %>%
+  osmdata_sf() %>% .$osm_points %>% select(osm_id,name)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=park_chap , color="red")
+#intuicion= en esta pagina tienen reportados como parques cuadraditos de pasto que yo creo que van a sobreestimar el efecto
+#en todo caso me parece bien dejarla por ahora
+
+#para controlar lo de parques muy pequenos, voy a sacar una de playground, que debe haber menos
+
+#PLAYGROUND
+play_chap <- opq(bbox = st_bbox(up_chapinero)) %>% 
+  add_osm_feature(key = "leisure", value = "playground") %>%
+  osmdata_sf() %>% .$osm_points %>% select(osm_id,name)
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=play_chap , color="red")
+#intuicion= mucho mejor, ahora si nos salen menos parques, mucho mas realista, vemos que la mayoria estan en chapinero alto y mas hacia el norte
+
+######################################################################################
+#HABIENDO CREADO LAS VARIABLES DE INTERES, AHORA LO QUE HARE ES MEDIR LAS DISTANCIAS A ESOS PUNTOS
+
+#prueba
+
+train_f$dist_play <- st_distance(x=train_f, y=play_chap)
+
+head(train_f$dist_play) ##VOY ACA 
+
+
+
+######################################################################################
+######################################################################################
+######################################################################################
 
 
 ###PREDICTORS COMING FROM DESCRIPTION ## aqui empezar a hacer lo que vimos en la clase con Eduard (martes) - usar base completa (train)
@@ -480,15 +717,7 @@ colnames(house_censo)
 
 
 
-##filtrar chapinero y el poblado? > creo que al ser barrios con precios altos podriamos tener problemas al entrenar con todos los demas 
-#Se podria filtrar como lo de imputar texto, buscar en title chapinero y el poblado
 
-#Separar las bases entre Medellin y Bogota 
-train_med <- train
-train_med <- train_med [!(train_med$l3=="Bogotá D.C"),] #21.356 obs #medellin, (6.024 quitando NA) 
-
-train_bog <- train
-train_bog <- train_bog [(train_bog$l3=="Bogotá D.C"),] #86.211 obs #bogota, (27.035 quitando NA)
 
 
 
@@ -501,18 +730,8 @@ p2= "poblado"
 
 
 
-chapinero <- getbb(place_name = "UPZ Chapinero, Bogota", 
-                   featuretype = "boundary:administrative", 
-                   format_out = "sf_polygon") %>% .$multipolygon
-
-leaflet() %>% addTiles() %>% addPolygons(data=chapinero)
-
-house_censo = st_join(house_mnz,mnz_censo)
-colnames(house_censo)
-
-view(train_f$description)
 
 
 
-###PREDICTORS COMING FROM EXTERNAL SOURCES
+
 
