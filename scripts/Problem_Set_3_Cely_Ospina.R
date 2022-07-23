@@ -39,7 +39,8 @@ p_load(tidyverse,    #Para limpiar los datos
        leaflet,
        tmaptools,
        osmdata, 
-       skim) #por ahora llame todas las del problem set 2
+       skim, 
+       readr) #por ahora llame todas las del problem set 2
 
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
@@ -929,9 +930,7 @@ summary(tt_barrios$oriente)
 
 ##en train 
 
-#Le indico cual es mi df y la latitud u el codigo que voy a usar >> no entiendo por que queda con una variable menos #RTA: PORQUE JUNTA LAT Y LON EN UNA SOLA VARIABLE LLAMADA GEOMETRY
-
-
+#Le indico cual es mi df y la latitud u el codigo que voy a usar
 tt_sf <- tt_sf %>%
   mutate (titlemin = str_to_lower(string = tt_sf$title))
 
@@ -978,29 +977,37 @@ x27 = "[:space:]+[:digit:]+m+²"
 
 #imputamos los valores de area que estan NA con los patrones 
 tt_sf = tt_sf %>% 
-  mutate(area = ifelse(is.na(area)==T,
-                       str_extract(string=tt_sf$description , pattern= 
-                       paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
-                              x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
-                              x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)),
-                       area))
+  mutate(area_n = str_extract(string=tt_sf$description , pattern=
+                                paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
+                                       x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
+                                       x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)))
+
+house = house %>% 
+  mutate(new_surface = str_extract(string=house$description , pattern= x))
 
 #verificamos como cambio NA
+table(is.na(tt_sf$area_n)) 
+
+table(tt_sf$area_n)
+sum(table(tt_sf$area_n))
+view(tt_sf$area_n)
+
+p_area <- "[:digit:]+[:punct:]+[:digit:]"
+
+#aqui sacamos los valores verdaderos sin letras
+tt_sf = tt_sf %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                       str_extract(string=tt_sf$area_n , pattern= p_area),
+                       area))
+
+p_area2 <- "[[:digit:]]"
+tt_sf = tt_sf %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                       str_extract(string=tt_sf$area_n , pattern= p_area2),
+                       area))
+
+#revisamos las NA 
 table(is.na(tt_sf$area)) #tiene 53468 NA, imputamos 25896
-
-table(tt_sf$area)
-sum(table(tt_sf$area))
-
-view(tt_sf$area)
-
-str_extract (string = tt_sf$area, ) ##pendiente terminar
-
-
-
-#pendiente:
-
-#cambiar en la variable tt_sf$area todas las comas por puntos
-#despues, extraer solo los numeros
 
 
 #####BANOS########
@@ -1031,31 +1038,34 @@ tt_sf = tt_sf %>%
                        bathrooms))
 table(is.na(tt_sf$bathrooms)) #18824 NA, imputamos 15519. las observaciones imputadas quedan con el ba, no se si eso afecte 
 
-######NIVEL##### >> aqui no estoy segura, en medellin los ed pueden tener hasta 30pisos
-w1 = "[:space:]+piso+[:space:]+[:digit:]"
-w2 = "piso+[:space:]+[:digit:]"
-w3 = "[:space:]+piso+[:space:]+[:digit:]+[:punct]"
-w4 = "[:space:]+primer piso+[:space:]"
-w5 = "[:space:]+segundo piso+[:space:]"
-w6 = "[:space:]+tercer piso+[:space:]"
-w7 = "[:space:]+cuarto piso+[:space:]"
-w8 = "[:space:]+quinto piso+[:space:]"
-w9 = "[:space:]+sexto piso+[:space:]"
-w10 = "[:space:]+septimo piso+[:space:]"
-w11 = "[:space:]+octavo piso+[:space:]"
-w12 = "[:space:]+noveno piso+[:space:]"
-w13 = "[:space:]+decimo piso+[:space:]"
-w14 = "[:space:]+primer piso+[:punct:]"
-w15 = "[:space:]+segundo piso+[:punct:]"
-w16 = "[:space:]+tercer piso+[:punct:]"
-w17 = "[:space:]+cuarto piso+[:punct:]"
-w18 = "[:space:]+quinto piso+[:punct:]"
-w19 = "[:space:]+sexto piso+[:punct:]"
-w20 = "[:space:]+septimo piso+[:punct:]"
-w21 = "[:space:]+octavo piso+[:punct:]"
-w22 = "[:space:]+noveno piso+[:punct:]"
-w23 = "[:space:]+decimo piso+[:punct:]"
+#hacer que las observaciones sean solo numeros
+tt_sf = tt_sf %>% 
+  mutate(bathrooms = str_extract(tt_sf$bathrooms, regex("[[:digit:]]")))
 
+
+######NIVEL >> especificamos mas, no solo alpha porque esta tomando observaciones como piso madera/piso nuevo y así 
+w1 = "piso+[:space:]+[:digit:]"
+w2 = "[:space:]+piso+[:space:]+[:digit:]+[:punct]"
+w3 = "primer piso"
+w4 = "segundo piso"
+w5 = "tercer piso"
+w6 = "cuarto piso"
+w7 = "quinto piso"
+w8 = "sexto piso"
+w9 = "septimo piso"
+w10 = "octavo piso+"
+w11 = "noveno piso"
+w13 = "decimo piso"
+w14 = "onceavo piso"
+w15 = "doceavo piso"
+w16 = "treceavo piso"
+w17 = "catorceavo piso"
+w18 = "quinceavo piso"
+w19 = "dieciseisavo piso"
+w20 = "diecisieteavo piso"
+w21 = "dieciochoavo piso"
+w22 = "diecinueveavo piso"
+w23 = "veinteavo piso"
 
 #creamos una nueva variable >> no estoy segura, algunos si los toma bien pero tambien toma cosas como el tipo de piso o cosas que escriben despues que no tienen que ver 
 tt_sf = tt_sf %>% 
@@ -1161,10 +1171,14 @@ s1 = "[:space:]+parqueadero+[:space:]"
 s2 = "[:space:]+parqueaderos+[:space:]"
 s3 = "[:space:]+parqueadero+[:punct:]"
 s4 = "[:space:]+parqueaderos+[:punct:]"
+s5 = "[:space:]+garaje+[:space:]"
+s6 = "[:space:]+garajes+[:space:]"
+s7 = "[:space:]+garaje+[:punct:]"
+s8 = "[:space:]+garajes+[:punct:]"
 
 #nueva variable 
 tt_sf <- tt_sf %>% 
-  mutate(parq = str_extract(string=tt_sf$description , pattern= paste0(s1,"|",s2,"|",s3,"|",s4)))
+  mutate(parq = str_extract(string=tt_sf$description , pattern= paste0(s1,"|",s2,"|",s3,"|",s4,"|",s5,"|",s6,"|",s7,"|",s8)))
 table(tt_sf$parq)
 table(is.na(tt_sf$parq))
 
@@ -1193,27 +1207,101 @@ tt_sf <- tt_sf %>%
 summary(tt_sf$ascen) #15% de las propiedades tienen ascensor
 
 
-####info DANE#### >>> tendriamos que traer manzanas y no entiendo como se limpia el archivo de manzanas ##yo ya subi las manzanas, mira mas arriba
+#####################################################################################
+#Se usara informacion obtenida por el DANE en el censo para complementar algunas variables importantes con NA
 
-#por manzana calculo la mediana del numero de cuartos, nu de personas y el estrato
+####Github no aguanta el peso de la información que se tiene 
+
+## censo data
+setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
+
+
 ## load data
-mnz_censo = import("http://eduard-martinez.github.io/data/fill-gis-vars/mnz_censo.rds")
+mgn = read_csv("CNPV2018_MGN_A2_11.CSV")
+colnames(mgn)
+distinct_all(mgn[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
 
-## about data
-browseURL("https://eduard-martinez.github.io/teaching/meca-4107/6-censo.txt")
+hog = read_csv("CNPV2018_2HOG_A2_11.CSV")
+colnames(hog)
+distinct_all(hog[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
 
-## spatial join
+viv = read_csv("CNPV2018_1VIV_A2_11.CSV") 
+colnames(viv)
+distinct_all(viv[,c("COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+
+## join data
+viv_hog = left_join(hog,viv,by=c("COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
+table(is.na(viv_hog$VA1_ESTRATO))
+
+data = left_join(viv_hog,mgn,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
+table(is.na(data$VA1_ESTRATO))
+
+## select vars
+H_NRO_CUARTOS = "Número de cuartos en total"
+HA_TOT_PER = "Total personas en el hogar"
+V_TOT_HOG = "Total de hogares en la vivienda"
+VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
+COD_DANE_ANM = "Codigo DANE de manzana"
+
+db = data %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
+
+## summary data
+censo_bog = db %>%
+  group_by(COD_DANE_ANM) %>% 
+  summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
+            sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
+            med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
+            med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
+
+
+## load data
+mgn_m = read_csv("CNPV2018_MGN_A2_05.CSV")
+colnames(mgn_m)
+distinct_all(mgn_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+
+hog_m = read_csv("CNPV2018_2HOG_A2_05.CSV")
+colnames(hog_m)
+distinct_all(hog_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
+
+viv_m = read_csv("CNPV2018_1VIV_A2_05.CSV") 
+colnames(viv_m)
+distinct_all(viv_m[,c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+
+## join data
+viv_hog_med = left_join(hog_m,viv_m,by=c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
+table(is.na(viv_hog_med$VA1_ESTRATO))
+
+data_med = left_join(viv_hog_med,mgn_m,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
+table(is.na(data$VA1_ESTRATO))
+
+
+#quitamos los municipios de antioquia que no sean medellin
+viv_hog_med2 <- viv_hog_med %>% subset(U_MPIO == "001")
+
+## select vars
+H_NRO_CUARTOS = "Número de cuartos en total"
+HA_TOT_PER = "Total personas en el hogar"
+V_TOT_HOG = "Total de hogares en la vivienda"
+VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
+COD_DANE_ANM = "Codigo DANE de manzana"
+
+db_med = data_med %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
+
+## summary data
+censo_med = db_med %>%
+  group_by(COD_DANE_ANM) %>% 
+  summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
+            sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
+            med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
+            med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
+
+
+#Unir Bogota y Medellin
+censos <- rbind (censo_bog,censo_med)
+
+#unir con las manzanas existentes >> necesitamos que las manzanas tengan id. 
 house_censo = st_join(house_mnz,mnz_censo)
 colnames(house_censo)
-
-
-
-table(train_f$title)
-
-ch = "chapinero"## pattern
-p = "el poblado"
-p2= "poblado"
-
 
 
 
