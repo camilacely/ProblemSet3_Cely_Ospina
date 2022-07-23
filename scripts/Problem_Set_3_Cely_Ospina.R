@@ -574,6 +574,27 @@ hw_chap <- hw_chap$osm_points %>% select(osm_id)
 leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_chap , color="red")
 
 
+#CBD POINTS
+centro_inter <- geocode_OSM("Torre Colpatria, Bogotá", as.sf = T) 
+centro_inter <- centro_inter$point  %>% select(query)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=centro_inter , color="red")
+
+av_chile <- geocode_OSM("Torre Banco de Occidente, Bogotá", as.sf = T) 
+av_chile <- av_chile$point  %>% select(query)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=av_chile , color="red")
+
+calle_100 <- geocode_OSM("World Trade Center, Bogotá", as.sf = T) 
+calle_100 <- calle_100$point  %>% select(query)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=calle_100 , color="red")
+
+usaquen <- geocode_OSM("Hacienda Santa Bárbara, Bogotá", as.sf = T) 
+usaquen <- usaquen$point  %>% select(query)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=usaquen , color="red")
+
+cbd_bog<- rbind(centro_inter , av_chile, calle_100, usaquen)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=cbd_bog , color="red")
+
+
 ##################################################################################
 #ahora conociendo las variables que nos sirven, voy a hacer lo mismo para medellin
 ##################################################################################
@@ -690,6 +711,11 @@ hw_pobl <- hw_pobl %>% osmdata_sf()
 hw_pobl <- hw_pobl$osm_points %>% select(osm_id)
 leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_pobl , color="red") #nota= highway captura, para ambas ciudades, informacion muy parecida a la de transporte masivo
 
+#CBD MEDELLIN
+cbd_med <- geocode_OSM("Avenida el Poblado, Medellín", as.sf = T) 
+cbd_med <- cbd_med$point  %>% select(query)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=cbd_med , color="red")
+
 
 ######################################################################################
 #QUIERO UNIR LAS VARIABLES DE UN MISMO TEMA DE AMBAS CIUDADES PORQUE LOS DATOS LOS TENEMOS COMO TOTALIDAD DE LAS DOS CIUDADES ENTONCES NO QUIERO SUMAR "POR APARTE" LAS DISTANCIAS
@@ -743,6 +769,9 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=playground , color="red")
 
 highway <- rbind(hw_chap, hw_pobl)
 leaflet() %>% addTiles() %>% addCircleMarkers(data=highway , color="red")
+
+cbd <- rbind (cbd_bog, cbd_med)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=cbd , color="red")
 
 
 ######################################################################################
@@ -835,14 +864,56 @@ min_dist_highway <- apply(dist_highway,1,min)
 tt_barrios$dist_highway <- min_dist_highway
 head(tt_barrios$dist_highway)
 
+#CBD
+dist_cbd <- st_distance(x=tt_barrios, y=cbd)
+min_dist_cbd <- apply(dist_cbd,1,min)
+tt_barrios$dist_cbd <- min_dist_cbd
+head(tt_barrios$dist_cbd)
+
 ###NOTAR ALGO IMPORTANTE: LA DISTANCIA A BARES, ETC. SOLO ESTA MEDIDA CON RESPECTO A LAS OBSERVACIONES DE LOS BARRIOS ESPECIFICAMENTE (TT_BARRIOS)
 ###ESTO ES PORQUE SACAR LA DISTANCIA A TODOS LOS BARES DE LAS CIUDADES Y MEDIRLAS CON RESPECTO A TODAS LAS OBSERVACIONES ES COMPUTACIONALMENTE INMENSO #matriz n*j demasiado grande
 ###POR ESO SE REALIZA SOLO SOBRE EL SUBSET
 
-##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES, PROCEDEMOS ENTONCES CON LAS VARIABLES DE TEXTO=
+###########################################################
+#VOY A PONER UNA VARIABLE ESPACIAL RELACIONADA CON EL ORIENTE
+
+#Intuicion: en nuestros barrios seleccionados y segun nuestro conocimiento, las propiedades tienen mayores precios mientras esten mas cerca de las montañas
+# esto puede estar asociado a mas altos valores paisajisticos DIFICILES DE CAPTURAR PORQUE NO TENEMOS VARIABLES DE ALTURA DE SUELO
+# a manera de coincidencia, en ambos barrios (chapinero y poblado) las montañas quedan al ORIENTE
+#entonces creare una variable asociada con la variable de LONGITUD
+
+#teniendo en cuenta que la longitud 0 es en Londres, y Colombia queda "a la izquierda" de Londres 
+#nuestra longitud es NEGATIVA
+#por lo tanto entre MAS CERCA A CERO este el valor, mas al ORIENTE está
+
+#o sea que al crear una variable de ORIENTE, esta va a tener una correlacion con precio
+#porque entre MAYOR sea la LONGITUD, MAYOR ES EL PRECIO (segun nuestra intuicion)
+
+#ahora bien, lo malo es que eliminamos la variable de LONGITUD porque esta se fusionó con latitud para crear geometry
+#entonces toca volverla a meter
+#estaba en train_test
+
+#recupero la variable de longitud asociada a property id (proviene de train_test)
+tt_lon <- select(filter(train_test),c(property_id, lon)) 
+
+#le llevo esta informacion a tt_barrios
+tt_barrios <- left_join(tt_barrios, tt_lon)
+
+#creo la variable de oriente
+tt_barrios$oriente <- tt_barrios$lon
+as.numeric (tt_barrios$oriente)
+
+summary(tt_barrios$oriente)  
+
+#importante= esta variable solo la podemos usar con el subset de los barrios
+#si la corremos con las observaciones de la ciudad completa mandaria una mala señal porque por ejemplo medellin es un valle
+#por fuera del poblado hay montañas en otros puntos cardinales
+#lo mismo en bogota por ejemplo en colina campestre
 
 
 
+
+##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES, PROCEDEMOS ENTONCES CON LAS VARIABLES DE TEXTO =
 
 ######################################################################################
 ######################################################################################
@@ -1137,13 +1208,6 @@ colnames(house_censo)
 
 
 
-
-
-
-
-
-
-
 table(train_f$title)
 
 ch = "chapinero"## pattern
@@ -1151,7 +1215,22 @@ p = "el poblado"
 p2= "poblado"
 
 
-###ESTO LO PONGO PARA GUARDAR UNA COPIA DEL WORKSPACE Y NO TENERLO QUE CORRER TODAS LAS VECES, PORQUE LO ESPACIAL SE DEMORA MUCHISIMO
+
+
+
+
+
+
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+##############     COPIA DE SEGURIDAD      ###########################################
+
+
+###ESTO LO PONGO AL FINAL PARA GUARDAR UNA COPIA DEL WORKSPACE Y NO TENERLO QUE CORRER TODAS LAS VECES, PORQUE LO ESPACIAL SE DEMORA MUCHISIMO
 #posdata: no lo guardo directamente en github porque pesa muchisimo y no me lo dejaria dar commit 
 
 #Saving the workspace is essential when you work with scripts that take a long time to run 
