@@ -928,6 +928,9 @@ summary(tt_barrios$oriente)
 #######Imputar valores########
 ##############################
 
+tt_sf <- st_as_sf(x=train_test,coords=c("lon","lat"),crs=4326)
+
+
 ##en train 
 
 #Le indico cual es mi df y la latitud u el codigo que voy a usar
@@ -949,16 +952,16 @@ x3 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts"
 x4 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts2"
 x5 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mts 2"
 x6 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros"
-x7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m2"
+x7 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+metros+[:space:]+cuadrados"
 x8 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+mt2"
 x9 = "[:space:]+[:digit:]+[:punct:]+[:digit:]+[:space:]+m+²"
 
 x10 = "[:space:]+[:digit:]+[:space:]+m2"
-x11= "[:space:]+[:digit:]+[:space:]+mts"
+x11 = "[:space:]+[:digit:]+[:space:]+mts"
 x12 = "[:space:]+[:digit:]+[:space:]+mts2"
 x13 = "[:space:]+[:digit:]+[:space:]+mts 2"
 x14 = "[:space:]+[:digit:]+[:space:]+metros"
-x15 = "[:space:]+[:digit:]+[:space:]+m2"
+x15 = "[:space:]+[:digit:]+[:space:]+metros+[:space:]+cuadrados"
 x16 = "[:space:]+[:digit:]+[:space:]+mt2"
 x17 = "[:space:]+[:digit:]+[:space:]+mt"
 x18 = "[:space:]+[:digit:]+[:space:]+m+²"
@@ -967,48 +970,51 @@ x19 = "[:space:]+[:digit:]+m2"
 x20 = "[:space:]+[:digit:]+mts"
 x21 = "[:space:]+[:digit:]+mts2"
 x22 = "[:space:]+[:digit:]+mts 2"
-x23 = "[:space:]+[:digit:]+metros"
-x24 = "[:space:]+[:digit:]+m2"
+x23 = "[:space:]+[:digit:]+metros+[:space:]+cuadrados"
+x24 = "[:space:]+[:digit:]+metros"
 x25 = "[:space:]+[:digit:]+mt2"
 x26 = "[:space:]+[:digit:]+mt 2"
 x27 = "[:space:]+[:digit:]+m+²"
 
 
-
 #imputamos los valores de area que estan NA con los patrones 
 tt_sf = tt_sf %>% 
-  mutate(area_n = str_extract(string=tt_sf$description , pattern=
-                                paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
-                                       x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
-                                       x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)))
-
-house = house %>% 
-  mutate(new_surface = str_extract(string=house$description , pattern= x))
-
-#verificamos como cambio NA
-table(is.na(tt_sf$area_n)) 
-
-table(tt_sf$area_n)
-sum(table(tt_sf$area_n))
-view(tt_sf$area_n)
-
-p_area <- "[:digit:]+[:punct:]+[:digit:]"
-
-#aqui sacamos los valores verdaderos sin letras
-tt_sf = tt_sf %>% 
   mutate(area = ifelse(is.na(area)==T,
-                       str_extract(string=tt_sf$area_n , pattern= p_area),
+                       str_extract(string=tt_sf$description , pattern=
+                                     paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
+                                            x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
+                                            x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)),
                        area))
 
-p_area2 <- "[[:digit:]]"
+
+#Complementamos a variable de area que ya tenemos
+tt_sf$area<-str_remove_all(tt_sf$area,"m2")
+tt_sf$area<-str_remove_all(tt_sf$area,"mts")
+tt_sf$area<-str_remove_all(tt_sf$area,"mts2")
+tt_sf$area<-str_remove_all(tt_sf$area,"mts 2")
+tt_sf$area<-str_remove_all(tt_sf$area,"metros")
+tt_sf$area<-str_remove_all(tt_sf$area,"mt2")
+tt_sf$area<-str_remove_all(tt_sf$area,"mt 2")
+tt_sf$area<-str_remove_all(tt_sf$area,"m+²")
+tt_sf$area<-str_remove_all(tt_sf$area,"mt")
+tt_sf$area<-str_remove_all(tt_sf$area,"metros cuadrados")
+tt_sf$area<-str_remove_all(tt_sf$area,"[:punct:]+[:digit:]")
+tt_sf$area<-str_remove_all(tt_sf$area,"[:space:]")
+
+
 tt_sf = tt_sf %>% 
-  mutate(area = ifelse(is.na(area)==T,
-                       str_extract(string=tt_sf$area_n , pattern= p_area2),
-                       area))
+  mutate(area = as.numeric(gsub(",", ".", tt_sf$area)))
+
+tt_sf = tt_sf %>% 
+  mutate(area = as.numeric(tt_sf$area))
 
 #revisamos las NA 
-table(is.na(tt_sf$area)) #tiene 53468 NA, imputamos 25896
+table(is.na(tt_sf$area)) ## al convertirla en numerica me esta generando unos NA, ahora tenemos 53480 (antes teniamos 53468 NA, imputamos 25896)
 
+
+table(tt_sf$area)
+sum(table(tt_sf$area))
+view(tt_sf$area)
 
 #####BANOS########
 table(is.na(tt_sf$bathrooms)) #34343 NA
@@ -1028,19 +1034,37 @@ y11= "[:space:]+tres baños+[:punct:]"
 y12= "[:space:]+cuatro baños+[:space:]"
 y13= "[:space:]+cuatro baños+[:punct:]"
 
-
-
 #imputar los NA de baños con los patrones
 tt_sf = tt_sf %>% 
   mutate(bathrooms = ifelse(is.na(bathrooms)==T,
                        str_extract(string=tt_sf$description , pattern= 
                        paste0(y1,"|",y2,"|",y3,"|",y4,"|",y5,"|",y6,"|",y7,"|",y8,"|",y9,"|",y10,"|",y11,"|",y12,"|",y13)),
                        bathrooms))
-table(is.na(tt_sf$bathrooms)) #18824 NA, imputamos 15519. las observaciones imputadas quedan con el ba, no se si eso afecte 
+table(is.na(tt_sf$bathrooms)) #18824 NA, imputamos 15519. 
 
 #hacer que las observaciones sean solo numeros
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"baños")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"banos")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"baos")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"con baño")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"un baño")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"dos baños")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"tres baños")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"cuatro baños")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:space:]")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:alpha:]")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:blank:]")
+
+
+
+#La volvemos numerica >>>>>>> cuando la vuelvo numerica me genera muuuuuchas NAAAAASSSS
 tt_sf = tt_sf %>% 
-  mutate(bathrooms = str_extract(tt_sf$bathrooms, regex("[[:digit:]]")))
+  mutate(bathrooms = as.numeric(gsub(",", ".", tt_sf$bathrooms)))
+
+tt_sf = tt_sf %>% 
+  mutate(bathrooms = as.numeric(tt_sf$bathrooms))
+
+table(is.na(tt_sf$bathrooms)) #ahora esta generando 26200 NA
 
 
 ######NIVEL >> especificamos mas, no solo alpha porque esta tomando observaciones como piso madera/piso nuevo y así 
@@ -1055,24 +1079,39 @@ w8 = "sexto piso"
 w9 = "septimo piso"
 w10 = "octavo piso+"
 w11 = "noveno piso"
-w13 = "decimo piso"
-w14 = "onceavo piso"
-w15 = "doceavo piso"
-w16 = "treceavo piso"
-w17 = "catorceavo piso"
-w18 = "quinceavo piso"
-w19 = "dieciseisavo piso"
-w20 = "diecisieteavo piso"
-w21 = "dieciochoavo piso"
-w22 = "diecinueveavo piso"
-w23 = "veinteavo piso"
+w12 = "decimo piso"
+w13 = "onceavo piso"
+w14 = "doceavo piso"
+w15 = "treceavo piso"
+w16 = "catorceavo piso"
+w17 = "quinceavo piso"
+w18 = "dieciseisavo piso"
+w19 = "diecisieteavo piso"
+w20 = "dieciochoavo piso"
+w21 = "diecinueveavo piso"
+w22 = "veinteavo piso"
+
 
 #creamos una nueva variable >> no estoy segura, algunos si los toma bien pero tambien toma cosas como el tipo de piso o cosas que escriben despues que no tienen que ver 
 tt_sf = tt_sf %>% 
   mutate(nivel = str_extract(string=tt_sf$description , pattern= paste0(w1,"|",w2,"|",w3,"|",w4,"|",w5,"|",w6,"|",w7,"|",w8,"|",w9,"|",w10,"|",w11,"|",w12,"|",
-                                                                          w13,"|",w14,"|",w15,"|",w16,"|",w17,"|",w18,"|",w19,"|",w20,"|",w21,"|",w22,"|",w23)))
+                                                                          w13,"|",w14,"|",w15,"|",w16,"|",w17,"|",w18,"|",w19,"|",w20,"|",w21,"|",w22)))
 table(tt_sf$nivel)
 table(is.na(tt_sf$nivel)) #101126 NA, no se si valga la pena ##de acuerdo
+
+#Voy a hacer una dummy de 1 si es primer piso y 0 otros 
+tt_sf <- tt_sf %>% 
+  mutate(jefe_hogar = if_else(tt_sf$nivel=="piso 1"|"primer piso", 1, 0))
+
+#voy a hacer una dummy 1 penthouse y 0 otros
+
+u2 = "[:space:]+penthouse+[:space:]"
+u3 = "[:space:]+pent house+[:space:]"
+u4 = "[:space:]+pent-house+[:space:]"
+u7 = "[:space:]+penthouse+[:punct:]"
+u8 = "[:space:]+pent house+[:punct:]"
+u9 = "[:space:]+pent-house+[:punct:]"
+
 
 #####balcon/terraza/bbq####
 v1 = "[:space:]+terraza+[:space:]"
@@ -1089,6 +1128,8 @@ v11= "[:space:]+balcon+[:punct:]"
 v12= "[:space:]+balcn+[:punct:]"
 v13= "[:space:]+bbq+[:punct:]"
 
+
+
 #nueva variable 
 tt_sf <- tt_sf %>% 
   mutate(balcon = str_extract(string=tt_sf$description , pattern= paste0(v1,"|",v2,"|",v3,"|",v4,"|",v5,"|",v6,"|",
@@ -1104,14 +1145,10 @@ summary(tt_sf$balcon) #32% de las propiedades tiene balcon o semejante
 
 ###duplex/penthouse/altillo##### extras 
 u1 = "[:space:]+duplex+[:space:]"
-u2 = "[:space:]+penthouse+[:space:]"
-u3 = "[:space:]+pent house+[:space:]"
-u4 = "[:space:]+pent-house+[:space:]"
+
 u5 = "[:space:]+altillo+[:space:]"
 u6 = "[:space:]+duplex+[:punct:]"
-u7 = "[:space:]+penthouse+[:punct:]"
-u8 = "[:space:]+pent house+[:punct:]"
-u9 = "[:space:]+pent-house+[:punct:]"
+
 u10 = "[:space:]+altillo+[:punct:]"
 
 #nueva variable 
