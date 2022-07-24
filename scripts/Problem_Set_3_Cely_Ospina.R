@@ -928,9 +928,6 @@ summary(tt_barrios$oriente)
 #######Imputar valores########
 ##############################
 
-tt_sf <- st_as_sf(x=train_test,coords=c("lon","lat"),crs=4326)
-
-
 ##en train 
 
 #Le indico cual es mi df y la latitud u el codigo que voy a usar
@@ -998,19 +995,18 @@ tt_sf$area<-str_remove_all(tt_sf$area,"mt 2")
 tt_sf$area<-str_remove_all(tt_sf$area,"m+²")
 tt_sf$area<-str_remove_all(tt_sf$area,"mt")
 tt_sf$area<-str_remove_all(tt_sf$area,"metros cuadrados")
+tt_sf$area<-str_remove_all(tt_sf$area, "[\n]")
+tt_sf$area<-str_remove_all(tt_sf$area, "[ ]")
+tt_sf$area<-str_replace_all(tt_sf$area, ",", ".")
 tt_sf$area<-str_remove_all(tt_sf$area,"[:punct:]+[:digit:]")
 tt_sf$area<-str_remove_all(tt_sf$area,"[:space:]")
 
-
-tt_sf = tt_sf %>% 
-  mutate(area = as.numeric(gsub(",", ".", tt_sf$area)))
 
 tt_sf = tt_sf %>% 
   mutate(area = as.numeric(tt_sf$area))
 
 #revisamos las NA 
 table(is.na(tt_sf$area)) ## al convertirla en numerica me esta generando unos NA, ahora tenemos 53480 (antes teniamos 53468 NA, imputamos 25896)
-
 
 table(tt_sf$area)
 sum(table(tt_sf$area))
@@ -1040,31 +1036,38 @@ tt_sf = tt_sf %>%
                        str_extract(string=tt_sf$description , pattern= 
                        paste0(y1,"|",y2,"|",y3,"|",y4,"|",y5,"|",y6,"|",y7,"|",y8,"|",y9,"|",y10,"|",y11,"|",y12,"|",y13)),
                        bathrooms))
-table(is.na(tt_sf$bathrooms)) #18824 NA, imputamos 15519. 
 
-#hacer que las observaciones sean solo numeros
+table(is.na(tt_sf$bathrooms)) . 
+
+#Sacamos solo los numeros de las observaciones
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "con" , replacement = "1")
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "un" , replacement = "1")
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "dos" , replacement = "2")
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "tres" , replacement = "3")
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "cuatro" , replacement = "4")
+
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"baños")
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"banos")
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"baos")
-tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"con baño")
-tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"un baño")
-tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"dos baños")
-tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"tres baños")
-tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"cuatro baños")
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:space:]")
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:alpha:]")
 tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:blank:]")
+tt_sf$bathrooms<-str_remove_all(tt_sf$bathrooms,"[:punct:]")
+tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, ",", ".")
 
+table(is.na(tt_sf$bathrooms))
 
-
-#La volvemos numerica >>>>>>> cuando la vuelvo numerica me genera muuuuuchas NAAAAASSSS
-tt_sf = tt_sf %>% 
-  mutate(bathrooms = as.numeric(gsub(",", ".", tt_sf$bathrooms)))
-
+#La volvemos numerica
 tt_sf = tt_sf %>% 
   mutate(bathrooms = as.numeric(tt_sf$bathrooms))
 
-table(is.na(tt_sf$bathrooms)) #ahora esta generando 26200 NA
+#Revisamos cuantas NA tiene 
+table(is.na(tt_sf$bathrooms)) ##18824 NA, imputamos 15519
+
+#Creamos una dummy para identificar si las observaciones estan por encima del promedio de baños
+tt_sf <- tt_sf %>% 
+  mutate(bano = if_else(tt_sf$bathrooms>(mean(tt_sf$bathrooms,na.rm=T)), 1, 0))
+#a partir de 3 son=1 
 
 
 ######NIVEL >> especificamos mas, no solo alpha porque esta tomando observaciones como piso madera/piso nuevo y así 
@@ -1100,17 +1103,69 @@ table(tt_sf$nivel)
 table(is.na(tt_sf$nivel)) #101126 NA, no se si valga la pena ##de acuerdo
 
 #Voy a hacer una dummy de 1 si es primer piso y 0 otros 
+#Sacamos solo los numeros de las observaciones
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "primer" , replacement = "1")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "segundo" , replacement = "2")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "tercer" , replacement = "3")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "cuarto" , replacement = "4")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "quinto" , replacement = "5")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "sexto" , replacement = "6")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "septimo" , replacement = "7")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "octavo" , replacement = "8")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "noveno" , replacement = "9")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "decimo" , replacement = "10")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "onceavo" , replacement = "11")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "doceavo" , replacement = "12")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "treceavo" , replacement = "13")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "catorceavo" , replacement = "14")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "quinceavo" , replacement = "15")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "dieciseisavo" , replacement = "16")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "diecisieteavo" , replacement = "17")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "dieciochoavo" , replacement = "18")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "diecinueveavo" , replacement = "19")
+tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "veinteavo" , replacement = "20")
+
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"piso")
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"nivel")
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"[:space:]")
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"[:alpha:]")
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"[:blank:]")
+tt_sf$nivel<-str_remove_all(tt_sf$nivel,"[:punct:]")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, ",", ".")
+
+#La volvemos numerica
+tt_sf = tt_sf %>% 
+  mutate(nivel = as.numeric(tt_sf$nivel))
+
+#Revisamos cuantas NA tiene 
+table(is.na(tt_sf$nivel)) #tiene 34343 
+
+#hacemos una dummy 1 si es mayor a la media y 0 de lo contrario>> parece que solo 2 y 1 toman 0 
 tt_sf <- tt_sf %>% 
-  mutate(jefe_hogar = if_else(tt_sf$nivel=="piso 1"|"primer piso", 1, 0))
+  mutate(piso = if_else(tt_sf$nivel>(mean(tt_sf$nivel,na.rm=T)), 1, 0))
+
+
 
 #voy a hacer una dummy 1 penthouse y 0 otros
+u1 = "[:space:]+penthouse+[:space:]"
+u2 = "[:space:]+pent house+[:space:]"
+u3 = "[:space:]+pent-house+[:space:]"
+u4 = "[:space:]+penthouse+[:punct:]"
+u5 = "[:space:]+pent house+[:punct:]"
+u6 = "[:space:]+pent-house+[:punct:]"
 
-u2 = "[:space:]+penthouse+[:space:]"
-u3 = "[:space:]+pent house+[:space:]"
-u4 = "[:space:]+pent-house+[:space:]"
-u7 = "[:space:]+penthouse+[:punct:]"
-u8 = "[:space:]+pent house+[:punct:]"
-u9 = "[:space:]+pent-house+[:punct:]"
+#nueva variable 
+tt_sf <- tt_sf %>% 
+  mutate(penthouse = str_extract(string=tt_sf$description , pattern= paste0(u1,"|",u2,"|",u3,"|",u4,"|",u5,"|",u6)))
+
+table(tt_sf$penthouse)
+table(is.na(tt_sf$penthouse)) #118096 NA, hay 621 penthouses
+
+tt_sf <- tt_sf %>% 
+  mutate(penthouse = if_else( is.na(penthouse)==TRUE,0,1)) 
+
+summary(tt_sf$penthouse)
+#el 0.5% de las observaciones son penthouse
 
 
 #####balcon/terraza/bbq####
@@ -1128,8 +1183,6 @@ v11= "[:space:]+balcon+[:punct:]"
 v12= "[:space:]+balcn+[:punct:]"
 v13= "[:space:]+bbq+[:punct:]"
 
-
-
 #nueva variable 
 tt_sf <- tt_sf %>% 
   mutate(balcon = str_extract(string=tt_sf$description , pattern= paste0(v1,"|",v2,"|",v3,"|",v4,"|",v5,"|",v6,"|",
@@ -1144,24 +1197,22 @@ summary(tt_sf$balcon) #32% de las propiedades tiene balcon o semejante
 
 
 ###duplex/penthouse/altillo##### extras 
-u1 = "[:space:]+duplex+[:space:]"
-
-u5 = "[:space:]+altillo+[:space:]"
-u6 = "[:space:]+duplex+[:punct:]"
-
-u10 = "[:space:]+altillo+[:punct:]"
+e1 = "[:space:]+duplex+[:space:]"
+e2 = "[:space:]+altillo+[:space:]"
+e3 = "[:space:]+duplex+[:punct:]"
+e4 = "[:space:]+altillo+[:punct:]"
 
 #nueva variable 
 tt_sf <- tt_sf %>% 
-  mutate(extras = str_extract(string=tt_sf$description , pattern= paste0(u1,"|",u2,"|",u3,"|",u4,"|",u5,"|",
-                                                                          u6,"|",u7,"|",u8,"|",u9,"|",u10)))
+  mutate(extras = str_extract(string=tt_sf$description , pattern= paste0(e1,"|",e2,"|",e3,"|",e4)))
+
 table(tt_sf$extras)
 table(is.na(tt_sf$extras))
 
 tt_sf <- tt_sf %>% 
   mutate(extras = if_else( is.na(extras)==TRUE,0,1)) 
 
-summary(tt_sf$extras) #3,4% de las propiedades son penthouse o semejante
+summary(tt_sf$extras) #3,1% de las propiedades son duplex o tienen altillo
 
 
 ###moderno/remodelado/renovado
