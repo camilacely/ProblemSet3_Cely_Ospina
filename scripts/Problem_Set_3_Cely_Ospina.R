@@ -51,8 +51,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -911,6 +911,68 @@ summary(tt_barrios$oriente)
 #lo mismo en bogota por ejemplo en colina campestre
 
 
+##############################
+#VARIABLES PARA TODA LA CIUDAD
+
+#yo creo que para la base completa (no por barrios) pueden ser importantes algunos amenities
+
+## 1. distancia a CBD (ya esta creado)
+## 2. voy a intentar sacar distancia a vias principales (en una ciudad con tantos problemas de transporte, la cercania a vias puede ser relevante)
+
+### 2
+#HIGHWAY (TOTAL CIUDADES)
+
+
+#BOGOTA
+
+hw_bog_trunk <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="highway" , value="trunk") 
+hw_bog_trunk <- hw_bog_trunk %>% osmdata_sf() 
+hw_bog_trunk <- hw_bog_trunk$osm_points %>% select(osm_id)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog_trunk , color="red") #caracas, 30 y 80
+
+hw_bog_primary <-  opq(bbox = getbb("Bogotá Colombia")) %>%
+  add_osm_feature(key="highway" , value="primary") 
+hw_bog_primary <- hw_bog_primary %>% osmdata_sf() 
+hw_bog_primary <- hw_bog_primary$osm_points %>% select(osm_id)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog_primary , color="red") #aqui salen muchas mas vias 
+
+hw_bog <- rbind (hw_bog_trunk, hw_bog_primary)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog , color="red")
+
+
+
+#MEDELLIN
+
+hw_med_trunk <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="highway" , value="trunk") 
+hw_med_trunk <- hw_med_trunk %>% osmdata_sf() 
+hw_med_trunk <- hw_med_trunk$osm_points %>% select(osm_id)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_med_trunk , color="red") 
+
+hw_med_primary <-  opq(bbox = getbb("Medellín Colombia")) %>%
+  add_osm_feature(key="highway" , value="primary") 
+hw_med_primary <- hw_med_primary %>% osmdata_sf() 
+hw_med_primary <- hw_med_primary$osm_points %>% select(osm_id)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_med_primary , color="red")
+
+hw_med <- rbind (hw_med_trunk, hw_med_primary)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_med , color="red")
+
+
+#HIGHWAY DE AMBAS CIUDADES
+
+highway_ciudades <- rbind(hw_bog, hw_med)
+leaflet() %>% addTiles() %>% addCircleMarkers(data=highway_ciudades , color="red")
+
+
+#CALCULAR DISTANCIAS DE LA BASE ***COMPLETA***
+
+dist_highway_ciudades <- st_distance(x=tt_sf, y=highway_ciudades)
+min_dist_highway_ciudades <- apply(dist_highway_ciudades,1,min)
+tt_barrios$dist_highway_ciudades <- min_dist_highway
+head(tt_barrios$dist_highway_ciudades)
+
 
 
 ##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES, PROCEDEMOS ENTONCES CON LAS VARIABLES DE TEXTO =
@@ -1213,6 +1275,37 @@ table(train_f$title)
 ch = "chapinero"## pattern
 p = "el poblado"
 p2= "poblado"
+
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+
+#####ESTRATOS BOGOTA (shapefile)
+
+est_bogota <-read_sf("stores/estratosbogota/ManzanaEstratificacion.shp")
+
+est_bogota <- st_transform(est_bogota, 4326)
+
+leaflet() %>% addTiles() %>% addPolygons(data=est_bogota) 
+
+
+#cargo bien, pendiente asignarle los valores de estrato a las observaciones
+
+
+
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+#######################     RANDOM FOREST      #######################################
+
+
+#Intuicion= con las variables que hemos identificado vamos a correr un random forest para identificar las mas relevantes
 
 
 
