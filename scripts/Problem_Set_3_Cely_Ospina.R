@@ -45,6 +45,10 @@ p_load(tidyverse,    #Para limpiar los datos
 predict<- stats::predict  #con esto soluciono el problema de que haya mas de una libreria con este comando
 
 
+
+
+
+
 #####################
 ##cargar los datos #
 #####################
@@ -894,6 +898,9 @@ head(tt_barrios$dist_cbd)
 #entonces toca volverla a meter
 #estaba en train_test
 
+
+######PRIMERO PARA TT_BARRIOS
+
 #recupero la variable de longitud asociada a property id (proviene de train_test)
 tt_lon <- select(filter(train_test),c(property_id, lon)) 
 
@@ -906,26 +913,48 @@ as.numeric (tt_barrios$oriente)
 
 summary(tt_barrios$oriente)  
 
-#importante= esta variable solo la podemos usar con el subset de los barrios
+
+######AHORA PARA TT_SF
+
+tt_sf <- left_join(tt_sf, tt_lon)
+tt_sf$oriente <- tt_sf$lon
+as.numeric (tt_sf$oriente)
+
+summary(tt_sf$oriente)  
+
+
+#importante= esta variable solo la podemos usar con el subset DE LOS BARRIOS
 #si la corremos con las observaciones de la ciudad completa mandaria una mala señal porque por ejemplo medellin es un valle
 #por fuera del poblado hay montañas en otros puntos cardinales
 #lo mismo en bogota por ejemplo en colina campestre
 
 
 ##############################
+##############################
 #VARIABLES PARA TODA LA CIUDAD
 
 #yo creo que para la base completa (no por barrios) pueden ser importantes algunos amenities
 
-## 1. distancia a CBD (ya esta creado)
+
+## 1. distancia a CBD (ya esta creada la localizacion, toca calcular las distancias)
+
+
+#es "el mismo codigo" que ya sacamos pero en vez de tener la base de tt_barrios tiene la completa
+dist_cbd_ciudades <- st_distance(x=tt_sf, y=cbd)
+head (dist_cbd_ciudades)
+min_dist_cbd_ciudades <- apply(dist_cbd_ciudades,1,min)
+tt_sf$dist_cbd_ciudades <- min_dist_cbd_ciudades
+head(tt_sf$dist_cbd_ciudades)
+
+
 ## 2. voy a intentar sacar distancia a vias principales (en una ciudad con tantos problemas de transporte, la cercania a vias puede ser relevante)
 
 ### 2
 #HIGHWAY (TOTAL CIUDADES)
 
+#############################   COMO PUNTOS 
 
 #BOGOTA
-
 hw_bog_trunk <-  opq(bbox = getbb("Bogotá Colombia")) %>%
   add_osm_feature(key="highway" , value="trunk") 
 hw_bog_trunk <- hw_bog_trunk %>% osmdata_sf() 
@@ -940,7 +969,6 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog_primary , color="red")
 
 hw_bog <- rbind (hw_bog_trunk, hw_bog_primary)
 leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog , color="red")
-
 
 
 #MEDELLIN
@@ -963,20 +991,21 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_med , color="red")
 
 #HIGHWAY DE AMBAS CIUDADES
 
-highway_ciudades <- rbind(hw_bog, hw_med)
+highway_ciudades <- rbind(hw_bog_trunk, hw_med_trunk) #la estoy poniendo solo con trunk porque se demora muchisimo con trunk + primary
 leaflet() %>% addTiles() %>% addCircleMarkers(data=highway_ciudades , color="red")
 
 
 #CALCULAR DISTANCIAS DE LA BASE ***COMPLETA***
 
-dist_highway_ciudades <- st_distance(x=tt_sf, y=highway_ciudades)
+dist_highway_ciudades <- st_distance(x=tt_sf, y=highway_ciudades)   
 min_dist_highway_ciudades <- apply(dist_highway_ciudades,1,min)
-tt_barrios$dist_highway_ciudades <- min_dist_highway
-head(tt_barrios$dist_highway_ciudades)
+tt_sf$dist_highway_ciudades <- min_dist_highway_ciudades
+head(tt_sf$dist_highway_ciudades)
 
 
+##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES
 
-##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES, PROCEDEMOS ENTONCES CON LAS VARIABLES DE TEXTO =
+
 
 ######################################################################################
 ######################################################################################
@@ -990,9 +1019,10 @@ head(tt_barrios$dist_highway_ciudades)
 #######Imputar valores########
 ##############################
 
-##en train 
+##########
+##en tt_sf
+##########
 
-#Le indico cual es mi df y la latitud u el codigo que voy a usar
 tt_sf <- tt_sf %>%
   mutate (titlemin = str_to_lower(string = tt_sf$title))
 
@@ -1074,6 +1104,7 @@ table(tt_sf$area)
 sum(table(tt_sf$area))
 view(tt_sf$area)
 
+
 #####BANOS########
 table(is.na(tt_sf$bathrooms)) #34343 NA
 
@@ -1126,10 +1157,7 @@ tt_sf = tt_sf %>%
 #Revisamos cuantas NA tiene 
 table(is.na(tt_sf$bathrooms)) ##18824 NA, imputamos 15519
 
-#Creamos una dummy para identificar si las observaciones estan por encima del promedio de baños
-tt_sf <- tt_sf %>% 
-  mutate(bano = if_else(tt_sf$bathrooms>(mean(tt_sf$bathrooms,na.rm=T)), 1, 0))
-#a partir de 3 son=1 
+
 
 
 ######NIVEL >> especificamos mas, no solo alpha porque esta tomando observaciones como piso madera/piso nuevo y así 
@@ -1157,7 +1185,7 @@ w21 = "diecinueveavo piso"
 w22 = "veinteavo piso"
 
 
-#creamos una nueva variable >> no estoy segura, algunos si los toma bien pero tambien toma cosas como el tipo de piso o cosas que escriben despues que no tienen que ver 
+#creamos una nueva variable 
 tt_sf = tt_sf %>% 
   mutate(nivel = str_extract(string=tt_sf$description , pattern= paste0(w1,"|",w2,"|",w3,"|",w4,"|",w5,"|",w6,"|",w7,"|",w8,"|",w9,"|",w10,"|",w11,"|",w12,"|",
                                                                           w13,"|",w14,"|",w15,"|",w16,"|",w17,"|",w18,"|",w19,"|",w20,"|",w21,"|",w22)))
@@ -1165,7 +1193,9 @@ table(tt_sf$nivel)
 table(is.na(tt_sf$nivel)) #101126 NA, no se si valga la pena ##de acuerdo
 
 #Voy a hacer una dummy de 1 si es primer piso y 0 otros 
+
 #Sacamos solo los numeros de las observaciones
+
 tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "primer" , replacement = "1")
 tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "segundo" , replacement = "2")
 tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "tercer" , replacement = "3")
@@ -1200,7 +1230,9 @@ tt_sf = tt_sf %>%
   mutate(nivel = as.numeric(tt_sf$nivel))
 
 #Revisamos cuantas NA tiene 
-table(is.na(tt_sf$nivel)) #tiene 34343 
+table(is.na(tt_sf$nivel)) #tiene 34343 #a mi me salen 18824 NAs
+
+summary(tt_sf$nivel)
 
 #hacemos una dummy 1 si es mayor a la media y 0 de lo contrario>> parece que solo 2 y 1 toman 0 
 tt_sf <- tt_sf %>% 
@@ -1209,6 +1241,7 @@ tt_sf <- tt_sf %>%
 
 
 #voy a hacer una dummy 1 penthouse y 0 otros
+
 u1 = "[:space:]+penthouse+[:space:]"
 u2 = "[:space:]+pent house+[:space:]"
 u3 = "[:space:]+pent-house+[:space:]"
@@ -1227,7 +1260,7 @@ tt_sf <- tt_sf %>%
   mutate(penthouse = if_else( is.na(penthouse)==TRUE,0,1)) 
 
 summary(tt_sf$penthouse)
-#el 0.5% de las observaciones son penthouse
+#el 0.5% de las observaciones son penthouse #no creo que de muchas senales pero bueno
 
 
 #####balcon/terraza/bbq####
@@ -1258,7 +1291,7 @@ tt_sf <- tt_sf %>%
 summary(tt_sf$balcon) #32% de las propiedades tiene balcon o semejante
 
 
-###duplex/penthouse/altillo##### extras 
+###duplex/altillo##### extras 
 e1 = "[:space:]+duplex+[:space:]"
 e2 = "[:space:]+altillo+[:space:]"
 e3 = "[:space:]+duplex+[:punct:]"
@@ -1335,7 +1368,7 @@ table(is.na(tt_sf$parq))
 tt_sf <- tt_sf %>% 
   mutate(parq = if_else( is.na(parq)==TRUE,0,1)) 
 
-summary(tt_sf$parq) # 36% de las propiedades tienen parqueadero
+summary(tt_sf$parq) # 36% de las propiedades tienen parqueadero #ahora sale 50%
 
 
 
@@ -1357,10 +1390,300 @@ tt_sf <- tt_sf %>%
 summary(tt_sf$ascen) #15% de las propiedades tienen ascensor
 
 
+
+############################################################################################################
+
+##########
+##en tt_barrios
+##########
+
+#NOTA: la saco por aparte porque si bien tt_barrios es realmente un subset de tt_sf, cortarla se demora demasiado (es una operacion espacial)
+#######entonces es mas facil correrle los mismos patrones de texto al subset que volver a realizar el corte
+
+
+tt_barrios <- tt_barrios %>%
+  mutate (titlemin = str_to_lower(string = tt_barrios$title))
+
+tt_barrios <- tt_barrios %>%
+  mutate (descriptionmin = str_to_lower(string = tt_barrios$description))
+
+
+#####AREA########
+#Revisar los missing values de las areas
+table(is.na(tt_barrios$area)) 
+
+#Patrones para imputar metraje ##voy a usar exactamente los mismos de arriba entonces no se vuelven a correr, ya estan creados 
+
+#imputamos los valores de area que estan NA con los patrones 
+tt_barrios = tt_barrios %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                       str_extract(string=tt_barrios$description , pattern=
+                                     paste0(x1,"|",x2,"|",x3,"|",x4,"|",x5,"|",x6,"|",x7,"|",x8,"|",x9,"|",x10,"|",
+                                            x11,"|",x12,"|",x13,"|",x14,"|",x15,"|",x16,"|",x17,"|",x18,"|",x19,"|",
+                                            x20,"|",x21,"|",x22,"|",x23,"|",x24,"|",x25,"|",x26,"|",x27)),
+                       area))
+
+
+#Complementamos a variable de area que ya tenemos
+tt_barrios$area<-str_remove_all(tt_barrios$area,"m2")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mts")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mts2")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mts 2")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"metros")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mt2")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mt 2")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"m+²")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"mt")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"metros cuadrados")
+tt_barrios$area<-str_remove_all(tt_barrios$area, "[\n]")
+tt_barrios$area<-str_remove_all(tt_barrios$area, "[ ]")
+tt_barrios$area<-str_replace_all(tt_barrios$area, ",", ".")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"[:punct:]+[:digit:]")
+tt_barrios$area<-str_remove_all(tt_barrios$area,"[:space:]")
+
+
+tt_barrios = tt_barrios %>% 
+  mutate(area = as.numeric(tt_barrios$area))
+
+#revisamos las NA 
+table(is.na(tt_barrios$area))  
+
+table(tt_barrios$area)
+sum(table(tt_barrios$area))
+view(tt_barrios$area)
+
+
+#####BANOS########
+table(is.na(tt_barrios$bathrooms)) 
+
+#patrones para banos #los mismos de arriba, no los corro otra vez
+
+
+#imputar los NA de baños con los patrones
+tt_barrios = tt_barrios %>% 
+  mutate(bathrooms = ifelse(is.na(bathrooms)==T,
+                            str_extract(string=tt_barrios$description , pattern= 
+                                          paste0(y1,"|",y2,"|",y3,"|",y4,"|",y5,"|",y6,"|",y7,"|",y8,"|",y9,"|",y10,"|",y11,"|",y12,"|",y13)),
+                            bathrooms))
+
+table(is.na(tt_barrios$bathrooms))
+
+#Sacamos solo los numeros de las observaciones
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, pattern = "con" , replacement = "1")
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, pattern = "un" , replacement = "1")
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, pattern = "dos" , replacement = "2")
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, pattern = "tres" , replacement = "3")
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, pattern = "cuatro" , replacement = "4")
+
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"baños")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"banos")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"baos")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"[:space:]")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"[:alpha:]")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"[:blank:]")
+tt_barrios$bathrooms<-str_remove_all(tt_barrios$bathrooms,"[:punct:]")
+tt_barrios$bathrooms<-str_replace_all(tt_barrios$bathrooms, ",", ".")
+
+table(is.na(tt_barrios$bathrooms))
+
+#La volvemos numerica
+tt_barrios = tt_barrios %>% 
+  mutate(bathrooms = as.numeric(tt_barrios$bathrooms))
+
+#Revisamos cuantas NA tiene 
+table(is.na(tt_barrios$bathrooms)) 
+
+
+
+######NIVEL 
+#mismos patrones de arriba
+
+
+#creamos una nueva variable 
+tt_barrios = tt_barrios %>% 
+  mutate(nivel = str_extract(string=tt_barrios$description , pattern= paste0(w1,"|",w2,"|",w3,"|",w4,"|",w5,"|",w6,"|",w7,"|",w8,"|",w9,"|",w10,"|",w11,"|",w12,"|",
+                                                                        w13,"|",w14,"|",w15,"|",w16,"|",w17,"|",w18,"|",w19,"|",w20,"|",w21,"|",w22)))
+table(tt_barrios$nivel)
+table(is.na(tt_barrios$nivel)) 
+
+#Voy a hacer una dummy de 1 si es primer piso y 0 otros 
+
+#Sacamos solo los numeros de las observaciones
+
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "primer" , replacement = "1")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "segundo" , replacement = "2")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "tercer" , replacement = "3")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "cuarto" , replacement = "4")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "quinto" , replacement = "5")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "sexto" , replacement = "6")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "septimo" , replacement = "7")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "octavo" , replacement = "8")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "noveno" , replacement = "9")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "decimo" , replacement = "10")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "onceavo" , replacement = "11")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "doceavo" , replacement = "12")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "treceavo" , replacement = "13")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "catorceavo" , replacement = "14")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "quinceavo" , replacement = "15")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "dieciseisavo" , replacement = "16")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "diecisieteavo" , replacement = "17")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "dieciochoavo" , replacement = "18")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "diecinueveavo" , replacement = "19")
+tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "veinteavo" , replacement = "20")
+
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"piso")
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"nivel")
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"[:space:]")
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"[:alpha:]")
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"[:blank:]")
+tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"[:punct:]")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, ",", ".")
+
+#La volvemos numerica
+tt_barrios = tt_barrios %>% 
+  mutate(nivel = as.numeric(tt_barrios$nivel))
+
+#Revisamos cuantas NA tiene 
+table(is.na(tt_barrios$nivel)) 
+
+summary(tt_barrios$nivel)
+
+#hacemos una dummy 1 si es mayor a la media y 0 de lo contrario>> parece que solo 2 y 1 toman 0 
+tt_barrios <- tt_barrios %>% 
+  mutate(piso = if_else(tt_barrios$nivel>(mean(tt_barrios$nivel,na.rm=T)), 1, 0))
+
+
+
+#voy a hacer una dummy 1 penthouse y 0 otros
+#mismo patron de arriba
+
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(penthouse = str_extract(string=tt_barrios$description , pattern= paste0(u1,"|",u2,"|",u3,"|",u4,"|",u5,"|",u6)))
+
+table(tt_barrios$penthouse)
+table(is.na(tt_barrios$penthouse)) 
+
+tt_barrios <- tt_barrios %>% 
+  mutate(penthouse = if_else( is.na(penthouse)==TRUE,0,1)) 
+
+summary(tt_barrios$penthouse)
+
+
+
+#####balcon/terraza/bbq####
+#mismo patron de arriba
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(balcon = str_extract(string=tt_barrios$description , pattern= paste0(v1,"|",v2,"|",v3,"|",v4,"|",v5,"|",v6,"|",
+                                                                         v7,"|",v8,"|",v9,"|",v10,"|",v11,"|",v12,"|",v13)))
+table(tt_barrios$balcon)
+table(is.na(tt_barrios$balcon))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(balcon = if_else( is.na(balcon)==TRUE,0,1)) 
+
+summary(tt_barrios$balcon)
+
+
+
+###duplex/altillo##### extras 
+#mismo patron de arriba
+
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(extras = str_extract(string=tt_barrios$description , pattern= paste0(e1,"|",e2,"|",e3,"|",e4)))
+
+table(tt_barrios$extras)
+table(is.na(tt_barrios$extras))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(extras = if_else( is.na(extras)==TRUE,0,1)) 
+
+summary(tt_barrios$extras) 
+
+
+
+###moderno/remodelado/renovado
+#mismo patron de arriba
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(renov = str_extract(string=tt_barrios$description , pattern= paste0(t1,"|",t2,"|",t3,"|",t4,"|",t5,"|",t6)))
+table(tt_barrios$renov)
+table(is.na(tt_barrios$renov))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(renov = if_else( is.na(renov)==TRUE,0,1)) 
+
+summary(tt_barrios$renov) 
+
+
+
+###vista/exterior
+#mismo patron de arriba
+
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(vista = str_extract(string=tt_barrios$description , pattern= paste0(t1,"|",t2,"|",t3,"|",t4)))
+table(tt_barrios$vista)
+table(is.na(tt_barrios$vista))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(vista = if_else( is.na(vista)==TRUE,0,1)) 
+
+summary(tt_barrios$vista) 
+
+
+
+####tiene parqueadero
+#mismo patron de arriba
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(parq = str_extract(string=tt_barrios$description , pattern= paste0(s1,"|",s2,"|",s3,"|",s4,"|",s5,"|",s6,"|",s7,"|",s8)))
+table(tt_barrios$parq)
+table(is.na(tt_barrios$parq))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(parq = if_else( is.na(parq)==TRUE,0,1)) 
+
+summary(tt_barrios$parq) 
+
+
+
+#####tiene ascensor
+#mismo patron de arriba
+
+#nueva variable 
+tt_barrios <- tt_barrios %>% 
+  mutate(ascen = str_extract(string=tt_barrios$description , pattern= paste0(r1,"|",r2,"|",r3,"|",r4)))
+table(tt_barrios$ascen)
+table(is.na(tt_barrios$ascen))
+
+tt_barrios <- tt_barrios %>% 
+  mutate(ascen = if_else( is.na(ascen)==TRUE,0,1)) 
+
+summary(tt_barrios$ascen) 
+
+
+
+#con esto ya tenemos las variables de texto
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+
+
 #####################################################################################
 #Se usara informacion obtenida por el DANE en el censo para complementar algunas variables importantes con NA
 
-####Github no aguanta el peso de la información que se tiene 
+####Github no aguanta el peso de la información que se tiene ## por este motivo por ahora no lo puedo correr Sara, lo dejo pendiente por si puedes guardar el objeto y guardarlo en stores
 
 ## censo data
 setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
@@ -1455,13 +1778,6 @@ colnames(house_censo)
 
 
 
-table(train_f$title)
-
-ch = "chapinero"## pattern
-p = "el poblado"
-p2= "poblado"
-
-
 
 ######################################################################################
 ######################################################################################
@@ -1477,10 +1793,253 @@ est_bogota <- st_transform(est_bogota, 4326)
 leaflet() %>% addTiles() %>% addPolygons(data=est_bogota) 
 
 
-#cargo bien, pendiente asignarle los valores de estrato a las observaciones
+#cargo bien, pendiente asignarle los valores de estrato a las observaciones ##continua pendiente
 
 
 
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+
+###ES NECESARIO GENERAR TODAS LAS VARIABLES COMO DUMMIES PARA PODERLAS METER AL RANDOM FOREST
+
+colnames(tt_barrios)
+#[1] "property_id"     "ad_type"         "start_date"      "end_date"        "created_on"      "l1"              "l2"             
+#[8] "l3"              "rooms"           "bedrooms"        "bathrooms"       "surface_total"   "surface_covered" "price"          
+#[15] "currency"        "title"           "description"     "property_type"   "operation_type"  "test"            "area_total"     
+#[22] "area_cubierta"   "area"            "geometry"        "dist_bar"        "dist_bus"        "dist_cafe"       "dist_cinema"    
+#[29] "dist_hospital"   "dist_restaurant" "dist_school"     "dist_theatre"    "dist_university" "dist_park"       "dist_playground"
+#[36] "dist_highway"    "dist_cbd"        "lon"             "oriente"         "titlemin"        "descriptionmin"  "nivel"          
+#[43] "piso"            "penthouse"       "balcon"          "renov"           "vista"           "ascen"           "extras"         
+#[50] "parq"    
+
+colnames (tt_sf)
+#[1] "property_id"           "ad_type"               "start_date"            "end_date"              "created_on"           
+#[6] "l1"                    "l2"                    "l3"                    "rooms"                 "bedrooms"             
+#[11] "bathrooms"             "surface_total"         "surface_covered"       "price"                 "currency"             
+#[16] "title"                 "description"           "property_type"         "operation_type"        "test"                 
+#[21] "area_total"            "area_cubierta"         "area"                  "geometry"              "titlemin"             
+#[26] "descriptionmin"        "nivel"                 "balcon"                "extras"                "renov"                
+#[31] "vista"                 "parq"                  "ascen"                 "dist_cbd_ciudades"     "dist_highway_ciudades"
+#[36] "lon"                   "oriente"              
+
+
+## DEPARTAMENTO
+#"l2" 
+tt_barrios <- tt_barrios %>% mutate (cundinamarca = if_else (tt_barrios$l2 == "Cundinamarca", 1, 0)) #cundinamarca
+tt_sf <- tt_sf %>% mutate (cundinamarca = if_else (tt_sf$l2 == "Cundinamarca", 1, 0))
+
+
+## HABITACIONES
+#"bedrooms"
+summary (tt_barrios$bedrooms)
+summary (tt_sf$bedrooms)
+
+ggplot(data = tt_barrios , mapping = aes(x = bedrooms , y = price))+
+  geom_point(col = "tomato" , size = 0.75)
+
+tt_barrios <- tt_barrios %>% mutate (bed_0 = if_else (tt_barrios$bedrooms == 0, 1, 0))    #bed_0
+tt_barrios <- tt_barrios %>% mutate (bed_1 = if_else (tt_barrios$bedrooms == 1, 1, 0))    #bed_1
+tt_barrios <- tt_barrios %>% mutate (bed_2 = if_else (tt_barrios$bedrooms == 2, 1, 0))    #bed_2
+tt_barrios <- tt_barrios %>% mutate (bed_3 = if_else (tt_barrios$bedrooms == 3, 1, 0))    #bed_3
+tt_barrios <- tt_barrios %>% mutate (bed_more = if_else (tt_barrios$bedrooms >= 4, 1, 0)) #bed_more
+
+tt_sf <- tt_sf %>% mutate (bed_0 = if_else (tt_sf$bedrooms == 0, 1, 0))
+tt_sf <- tt_sf %>% mutate (bed_1 = if_else (tt_sf$bedrooms == 1, 1, 0))
+tt_sf <- tt_sf %>% mutate (bed_2 = if_else (tt_sf$bedrooms == 2, 1, 0))
+tt_sf <- tt_sf %>% mutate (bed_3 = if_else (tt_sf$bedrooms == 3, 1, 0))
+tt_sf <- tt_sf %>% mutate (bed_more = if_else (tt_sf$bedrooms >= 4, 1, 0))
+
+
+#BANOS
+#"bathrooms"
+
+#Creamos una dummy para identificar si las observaciones estan por encima del promedio de baños
+
+summary(tt_barrios$bathrooms) #todavia 3950 NAs
+summary(tt_sf$bathrooms) #todavia 18824 NAs 
+
+
+tt_barrios <- tt_barrios %>% 
+  mutate(bath_more = if_else(tt_barrios$bathrooms>(mean(tt_barrios$bathrooms,na.rm=T)), 1, 0)) #bath_more
+
+tt_sf <- tt_sf %>% 
+  mutate(bath_more = if_else(tt_sf$bathrooms>(mean(tt_sf$bathrooms,na.rm=T)), 1, 0))
+
+
+#AREA
+#"area"
+#voy a hacer lo mismo que en banos
+
+tt_barrios <- tt_barrios %>% 
+  mutate(area_more = if_else(tt_barrios$area>(mean(tt_barrios$area,na.rm=T)), 1, 0)) #area_more
+
+tt_sf <- tt_sf %>% 
+  mutate(area_more = if_else(tt_sf$area>(mean(tt_sf$area,na.rm=T)), 1, 0))
+
+
+#######DISTANCIAS (la mayoria de estas solo estan para el subset de barrios)
+
+#dist_bar
+summary(tt_barrios$dist_bar)
+tt_barrios <- tt_barrios %>% 
+  mutate(bar_more = if_else(tt_barrios$dist_bar>(mean(tt_barrios$dist_bar,na.rm=T)), 1, 0)) #bar_more
+summary(tt_barrios$bar_more)
+
+
+#dist_bus
+summary(tt_barrios$dist_bus)
+tt_barrios <- tt_barrios %>% 
+  mutate(bus_more = if_else(tt_barrios$dist_bus>(mean(tt_barrios$dist_bus,na.rm=T)), 1, 0)) #bus_more
+summary(tt_barrios$bus_more)
+
+
+#dist_cafe
+summary(tt_barrios$dist_cafe)
+tt_barrios <- tt_barrios %>% 
+  mutate(cafe_more = if_else(tt_barrios$dist_cafe>(mean(tt_barrios$dist_cafe,na.rm=T)), 1, 0)) #cafe_more
+summary(tt_barrios$cafe_more)
+
+
+#dist_cinema
+summary(tt_barrios$dist_cinema)
+tt_barrios <- tt_barrios %>% 
+  mutate(cine_more = if_else(tt_barrios$dist_cinema>(mean(tt_barrios$dist_cinema,na.rm=T)), 1, 0)) #cine_more
+summary(tt_barrios$cine_more)
+
+
+#dist_hospital
+summary(tt_barrios$dist_hospital)
+tt_barrios <- tt_barrios %>% 
+  mutate(hosp_more = if_else(tt_barrios$dist_hospital>(mean(tt_barrios$dist_hospital,na.rm=T)), 1, 0)) #hosp_more
+summary(tt_barrios$hosp_more)
+
+
+#dist_restaurant
+summary(tt_barrios$dist_restaurant)
+tt_barrios <- tt_barrios %>% 
+  mutate(rest_more = if_else(tt_barrios$dist_restaurant>(mean(tt_barrios$dist_restaurant,na.rm=T)), 1, 0)) #rest_more
+summary(tt_barrios$rest_more)
+
+
+#dist_school
+summary(tt_barrios$dist_school)
+tt_barrios <- tt_barrios %>% 
+  mutate(school_more = if_else(tt_barrios$dist_school>(mean(tt_barrios$dist_school,na.rm=T)), 1, 0)) #school_more
+summary(tt_barrios$school_more)
+
+
+#dist_theatre
+summary(tt_barrios$dist_theatre)
+tt_barrios <- tt_barrios %>% 
+  mutate(theatre_more = if_else(tt_barrios$dist_theatre>(mean(tt_barrios$dist_theatre,na.rm=T)), 1, 0)) #theatre_more
+summary(tt_barrios$theatre_more)
+
+
+#dist_university
+summary(tt_barrios$dist_university)
+tt_barrios <- tt_barrios %>% 
+  mutate(univ_more = if_else(tt_barrios$dist_university>(mean(tt_barrios$dist_university,na.rm=T)), 1, 0)) #univ_more
+summary(tt_barrios$univ_more)
+
+
+#dist_park
+summary(tt_barrios$dist_park)
+tt_barrios <- tt_barrios %>% 
+  mutate(park_more = if_else(tt_barrios$dist_park>(mean(tt_barrios$dist_park,na.rm=T)), 1, 0)) #park_more
+summary(tt_barrios$park_more)
+
+
+#dist_playground
+summary(tt_barrios$dist_playground)
+tt_barrios <- tt_barrios %>% 
+  mutate(play_more = if_else(tt_barrios$dist_playground>(mean(tt_barrios$dist_playground,na.rm=T)), 1, 0)) #play_more
+summary(tt_barrios$play_more)
+
+#############
+#dist_highway
+
+#para tt_barrios
+summary(tt_barrios$dist_highway)
+tt_barrios <- tt_barrios %>% 
+  mutate(hw_more = if_else(tt_barrios$dist_highway>(mean(tt_barrios$dist_highway,na.rm=T)), 1, 0)) #hw_more
+summary(tt_barrios$hw_more)
+
+#para tt_sf
+summary(tt_sf$dist_highway_ciudades)
+tt_sf <- tt_sf %>% 
+  mutate(hw_more = if_else(tt_sf$dist_highway_ciudades>(mean(tt_sf$dist_highway_ciudades,na.rm=T)), 1, 0)) #hw_more
+summary(tt_sf$hw_more)
+
+#########
+#dist_cbd
+
+#para tt_barrios
+summary(tt_barrios$dist_cbd)
+tt_barrios <- tt_barrios %>% 
+  mutate(cbd_more = if_else(tt_barrios$dist_cbd>(mean(tt_barrios$dist_cbd,na.rm=T)), 1, 0)) #cbd_more
+summary(tt_barrios$cbd_more)
+
+      
+#para tt_sf
+summary(tt_sf$dist_cbd_ciudades)
+tt_sf <- tt_sf %>% 
+  mutate(cbd_more = if_else(tt_sf$dist_cbd_ciudades>(mean(tt_sf$dist_cbd_ciudades,na.rm=T)), 1, 0)) #cbd_more
+summary(tt_sf$cbd_more)
+
+
+#ORIENTE (unicamente en tt_barrios)
+summary(tt_barrios$oriente)
+tt_barrios <- tt_barrios %>% 
+  mutate(oriente_more = if_else(tt_barrios$oriente>(mean(tt_barrios$oriente,na.rm=T)), 1, 0)) #oriente_more
+summary(tt_barrios$oriente_more)
+
+
+#variables de texto ya estan
+
+#########
+#EN CONCLUSION LAS VARIABLES DUMMIES QUE TENEMOS SON LAS SIGUIENTES
+
+
+#cundinamarca
+#bed_0
+#bed_1
+#bed_2
+#bed_3
+#bed_more
+#bath_more
+#area_more
+#bar_more
+#bus_more
+#cafe_more
+#cine_more
+#hosp_more
+#rest_more
+#school_more
+#theatre_more
+#univ_more
+#park_more
+#play_more
+#hw_more
+#cbd_more
+#oriente_more
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+
+#como ya tenemos todo lo anterior, vamos a separar train y test nuevamente
+
+summary(tt_sf$test)
+test_total <- tt_sf %>% subset(test == 1) 
+train_total  <- tt_sf %>% subset(test == 0) 
+
+summary(tt_barrios$test)
+test_barrios <- tt_barrios %>% subset(test == 1) 
+train_barrios <- tt_barrios %>% subset(test == 0) 
 
 
 ######################################################################################
@@ -1492,7 +2051,116 @@ leaflet() %>% addTiles() %>% addPolygons(data=est_bogota)
 
 #Intuicion= con las variables que hemos identificado vamos a correr un random forest para identificar las mas relevantes
 
+#por ahora la voy a sacar solo en BARRIOS
+intersect(names(train_barrios), names(test_barrios))
 
+#[1] "property_id"     "ad_type"         "start_date"      "end_date"        "created_on"      "l1"              "l2"             
+#[8] "l3"              "rooms"           "bedrooms"        "bathrooms"       "surface_total"   "surface_covered" "price"          
+#[15] "currency"        "title"           "description"     "property_type"   "operation_type"  "test"            "area_total"     
+#[22] "area_cubierta"   "area"            "geometry"        "dist_bar"        "dist_bus"        "dist_cafe"       "dist_cinema"    
+#[29] "dist_hospital"   "dist_restaurant" "dist_school"     "dist_theatre"    "dist_university" "dist_park"       "dist_playground"
+#[36] "dist_highway"    "dist_cbd"        "lon"             "oriente"         "titlemin"        "descriptionmin"  "nivel"          
+#[43] "piso"            "penthouse"       "balcon"          "renov"           "vista"           "ascen"           "extras"         
+#[50] "parq"            "bar_more"        "bus_more"        "cafe_more"       "cine_more"       "hosp_more"       "rest_more"      
+#[57] "school_more"     "theatre_more"    "univ_more"       "park_more"       "play_more"       "hw_more"         "cbd_more"       
+#[64] "oriente_more"    "bath_more"   
+
+
+#cundinamarca 
+summary(train_barrios$cundinamarca)
+#bed_0
+summary(train_barrios$bed_0)
+#bed_1
+summary(train_barrios$bed_1)
+#bed_2
+summary(train_barrios$bed_2)
+#bed_3
+summary(train_barrios$bed_3)
+#bed_more
+summary(train_barrios$bed_more)
+#bath_more
+summary(train_barrios$bath_more)     #NAs
+#area_more
+summary(train_barrios$area_more)     #NAs
+#bar_more
+summary(train_barrios$bar_more)
+#bus_more
+summary(train_barrios$bus_more)
+#cafe_more
+summary(train_barrios$cafe_more)
+#cine_more
+summary(train_barrios$cine_more)
+#hosp_more
+summary(train_barrios$hosp_more)
+#rest_more
+summary(train_barrios$rest_more)
+#school_more
+summary(train_barrios$school_more)
+#theatre_more
+summary(train_barrios$theatre_more)
+#univ_more
+summary(train_barrios$univ_more)
+#park_more
+summary(train_barrios$park_more)
+#play_more
+summary(train_barrios$play_more)
+#hw_more
+summary(train_barrios$hw_more)
+#cbd_more
+summary(train_barrios$cbd_more)
+#oriente_more
+summary(train_barrios$oriente_more)
+#nivel
+summary(train_barrios$nivel)     #NAs
+#piso
+summary(train_barrios$piso)     #NAs
+#penthouse
+summary(train_barrios$penthouse)
+#balcon
+summary(train_barrios$balcon)
+#renov
+summary(train_barrios$renov)
+#vista
+summary(train_barrios$vista)
+#ascen
+summary(train_barrios$ascen)
+#extras
+summary(train_barrios$extras)
+#parq
+summary(train_barrios$parq)
+
+
+#recordar que RandomForests se utiliza es para CLASIFICACION entonces necesito una variable dummy que de alguna manera capture el precio
+#y nos retorne cuales son las variables que mejor lo predicen
+#voy a usar la misma metodologia que hemos usado creando todas las otras dummies
+
+summary(train_barrios$price)
+train_barrios <- train_barrios %>% 
+  mutate(price_more = if_else(train_barrios$price>(mean(train_barrios$price,na.rm=T)), 1, 0))
+summary(train_barrios$price_more)
+
+#AHORA SI
+
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+
+ctrl<- trainControl(method = "cv", 
+                    number = 5,
+                    summaryFunction = fiveStats,  
+                    classProbs = TRUE,
+                    verbose = FALSE,
+                    savePredictions = T)
+
+set.seed(123)
+
+forest <- train(
+  price_more ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
+    cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + cbd_more + oriente_more +
+    penthouse + balcon + renov + vista + ascen + extras + parq,
+  data = train_barrios,
+  method = "rf",
+  trControl = ctrl,
+  family = "binomial",
+  metric="Sens",)
 
 
 
