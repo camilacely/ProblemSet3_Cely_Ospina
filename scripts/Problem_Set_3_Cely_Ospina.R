@@ -1005,7 +1005,6 @@ head(tt_sf$dist_highway_ciudades)
 
 ##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES
 
-load("C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data/problem set 3/backup_jul22_workspace.RData")
 
 
 ######################################################################################
@@ -1195,26 +1194,26 @@ table(is.na(tt_sf$nivel)) #101126 NA, no se si valga la pena ##de acuerdo
 
 #Sacamos solo los numeros de las observaciones
 
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "primer" , replacement = "1")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "segundo" , replacement = "2")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "tercer" , replacement = "3")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "cuarto" , replacement = "4")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "quinto" , replacement = "5")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "sexto" , replacement = "6")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "septimo" , replacement = "7")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "octavo" , replacement = "8")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "noveno" , replacement = "9")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "decimo" , replacement = "10")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "onceavo" , replacement = "11")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "doceavo" , replacement = "12")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "treceavo" , replacement = "13")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "catorceavo" , replacement = "14")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "quinceavo" , replacement = "15")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "dieciseisavo" , replacement = "16")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "diecisieteavo" , replacement = "17")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "dieciochoavo" , replacement = "18")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "diecinueveavo" , replacement = "19")
-tt_sf$nivel<-str_replace_all(tt_sf$bathrooms, pattern = "veinteavo" , replacement = "20")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "primer" , replacement = "1")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "segundo" , replacement = "2")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "tercer" , replacement = "3")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "cuarto" , replacement = "4")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "quinto" , replacement = "5")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "sexto" , replacement = "6")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "septimo" , replacement = "7")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "octavo" , replacement = "8")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "noveno" , replacement = "9")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "decimo" , replacement = "10")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "onceavo" , replacement = "11")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "doceavo" , replacement = "12")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "treceavo" , replacement = "13")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "catorceavo" , replacement = "14")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "quinceavo" , replacement = "15")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "dieciseisavo" , replacement = "16")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "diecisieteavo" , replacement = "17")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "dieciochoavo" , replacement = "18")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "diecinueveavo" , replacement = "19")
+tt_sf$nivel<-str_replace_all(tt_sf$nivel, pattern = "veinteavo" , replacement = "20")
 
 tt_sf$nivel<-str_remove_all(tt_sf$nivel,"piso")
 tt_sf$nivel<-str_remove_all(tt_sf$nivel,"nivel")
@@ -1531,26 +1530,26 @@ table(is.na(tt_barrios$nivel))
 
 #Sacamos solo los numeros de las observaciones
 
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "primer" , replacement = "1")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "segundo" , replacement = "2")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "tercer" , replacement = "3")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "cuarto" , replacement = "4")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "quinto" , replacement = "5")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "sexto" , replacement = "6")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "septimo" , replacement = "7")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "octavo" , replacement = "8")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "noveno" , replacement = "9")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "decimo" , replacement = "10")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "onceavo" , replacement = "11")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "doceavo" , replacement = "12")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "treceavo" , replacement = "13")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "catorceavo" , replacement = "14")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "quinceavo" , replacement = "15")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "dieciseisavo" , replacement = "16")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "diecisieteavo" , replacement = "17")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "dieciochoavo" , replacement = "18")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "diecinueveavo" , replacement = "19")
-tt_barrios$nivel<-str_replace_all(tt_barrios$bathrooms, pattern = "veinteavo" , replacement = "20")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "primer" , replacement = "1")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "segundo" , replacement = "2")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "tercer" , replacement = "3")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "cuarto" , replacement = "4")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "quinto" , replacement = "5")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "sexto" , replacement = "6")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "septimo" , replacement = "7")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "octavo" , replacement = "8")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "noveno" , replacement = "9")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "decimo" , replacement = "10")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "onceavo" , replacement = "11")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "doceavo" , replacement = "12")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "treceavo" , replacement = "13")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "catorceavo" , replacement = "14")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "quinceavo" , replacement = "15")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "dieciseisavo" , replacement = "16")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "diecisieteavo" , replacement = "17")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "dieciochoavo" , replacement = "18")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "diecinueveavo" , replacement = "19")
+tt_barrios$nivel<-str_replace_all(tt_barrios$nivel, pattern = "veinteavo" , replacement = "20")
 
 tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"piso")
 tt_barrios$nivel<-str_remove_all(tt_barrios$nivel,"nivel")
@@ -1728,7 +1727,7 @@ tt_bog1 = st_join(x = tt_bog,y = mbog)
 colnames(tt_bog1)
 
 ##AREA: Imputamos las observaciones con la mediana de las manzanas
-table(is.na(tt_bog1$bathrooms)) #2039 na
+table(is.na(tt_bog1$area)) #2039 na
 tt_bog1 = tt_bog1 %>%
   group_by(MANZ_CCDGO) %>%
   mutate(area_m=median(area,na.rm=T))
@@ -2008,12 +2007,7 @@ colnames(tt_mde1)
 
 censo_med<-rename(censo_med, MANZ_CCNCT = COD_DANE_ANM)
 
-tt_mde1$MANZ_CCNCT<-as.numeric(tt_mde1$MANZ_CCNCT)
-censo_med$MANZ_CCNCT<-as.numeric(censo_med$MANZ_CCNCT)
-
 tt_mde1 = left_join(tt_mde1,censo_med,by=c("MANZ_CCNCT"))
-
-
 
 #imputamos estrato
 
