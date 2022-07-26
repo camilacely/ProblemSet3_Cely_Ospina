@@ -1005,6 +1005,7 @@ head(tt_sf$dist_highway_ciudades)
 
 ##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES
 
+load("C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data/problem set 3/backup_jul22_workspace.RData")
 
 
 ######################################################################################
@@ -1878,7 +1879,10 @@ summary(tt_mde1$estrato) #ahora el promedio es estrato 4-5
 
 #Se usara informacion obtenida por el DANE en el censo para complementar algunas variables importantes con NA
 
-##########################Guarde el resultado de las bases del censo en stores, saltar hasta que se cargan 
+######################################################################################
+##Guarde el resultado de las bases del censo en stores, saltar hasta que se cargan 
+######################################################################################
+
 
 ## censo data
 setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
@@ -1970,6 +1974,12 @@ censo_med = db_med %>%
 
 export(censo_med,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_med.rds")
 
+######################################################################################
+######################################################################################
+######################################################################################
+
+######################################################################################
+#AQUI PUEDES CARGAR LAS QUE GUARDE CON LA INFORMACIÓN DEL CENSO 
 
 ##############unir bases 
 
@@ -2402,43 +2412,43 @@ forest <- train(
 #quitamos los outliers
 
 #area
-ggplot(train, aes(x=area)) +
+ggplot(train_barrios, aes(x=area)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
-quantile(train$area, 0.995) 
-summary(train$area)
+quantile(train_barrios$area, 0.995) 
+summary(train_barrios$area)
 
 #Areas desde 20 hasta 2000
-train<- train %>% 
+train_barrios<- train_barrios %>% 
   filter(area <=1000)
 
-train<- train %>% 
+train_barrios<- train_barrios %>% 
   filter(area >= 20)
 
-ggplot(train, aes(x=area)) +
+ggplot(train_barrios, aes(x=area)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
 #Baños
-ggplot(train, aes(x=bathrooms)) +
+ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
-summary(train$bathrooms)
+summary(train_barrios$bathrooms)
 
-train<- train %>% 
+train_barrios<- train_barrios %>% 
   filter(bathrooms <=7)
 
-ggplot(train, aes(x=bathrooms)) +
+ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
 #Niveles
-ggplot(train, aes(x=nivel)) +
+ggplot(train_barrios, aes(x=nivel)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
 
 #Nas
 #estrato
-table(is.na(train$estrato))
-train <- train[!is.na(train$estrato),]
+table(is.na(train_barrios$estrato))
+train_barrios <- train_barrios[!is.na(train_barrios$estrato),]
 
 
 
@@ -2463,24 +2473,25 @@ ggplot(train_barrios, aes(x=sqrt(price)))+
 
 
 ######OLS#####
-modelo1<-lm(sqrt(price) ~ INCLUIR VARIABLES)
+modelo_ols<-lm(sqrt(price) ~ INCLUIR VARIABLES)
 
-stargazer(modelo1, type = "text")
-train_barrios$predict_lm<-(predict(modelo1, newdata = train_barrios))^2
+stargazer(modelo_ols, type = "text")
+train_barrios$predict_lm<-(predict(modelo_ols, newdata = train_barrios))^2
 summary(train_barrios$predict_lm)
 
-mse_modelo1 <- mean((train_barrios$predict_lm - train_barrios$price)^2)
+mse_modelo_ols <- mean((train_barrios$predict_lm - train_barrios$price)^2)
 
 
 ######Lasso#####
+###entrenamiento y test
 m_barrios<-as.data.frame(cbind(VARIABLES))
 colnames(m_barrios)<-c("VARIABLES")
 
 m_barrios<- as.data.frame(scale(m_barrios, center = TRUE, scale = TRUE))
 
-x_train <- model.matrix("variables", data = m_barrios)[, -1]
+x_train_lasso <- model.matrix("variables", data = m_barrios)[, -1]
 
-y_train <- m_barrios$price
+y_train_lasso <- m_barrios$price
 
 
 
