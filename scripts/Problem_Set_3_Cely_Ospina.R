@@ -2021,6 +2021,8 @@ tt_bog1 = tt_bog1 %>% group_by(MANZ_CCNCT) %>%
                           no = estrato))
 
 table(is.na(tt_bog1$estrato)) #339 NAs
+export(tt_bog1,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina/stores/tt_bog1.rds")
+
 
 #Medellin
 colnames(tt_mde1)
@@ -2030,11 +2032,21 @@ tt_mde1 = tt_mde1 %>% group_by(MANZ_CCNCT) %>%
                           yes = med_VA1_ESTRATO,
                           no = estrato))
 
-table(is.na(tt_mde1$estrato)) #23 NAs
+table(is.na(tt_mde1$estrato)) #24 NAs
+
+export(tt_mde1,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina/stores/tt_mde1.rds")
 
 
+######################################################################################
+######################################################################################
+######################################################################################
 
+tt_bog1<-readRDS("stores/tt_bog1.Rds")    
+tt_mde1<-readRDS("stores/tt_mde1.Rds")  
 
+#union bases
+
+tt_barrios <- rbind(tt_bog1,tt_mde1)
 
 ######################################################################################
 ######################################################################################
@@ -2280,7 +2292,57 @@ summary(tt_barrios$test)
 test_barrios <- tt_barrios %>% subset(test == 1) 
 train_barrios <- tt_barrios %>% subset(test == 0) 
 
+######################################################################################
+######################################################################################
+######################################################################################
 
+#quitamos los outliers
+
+#area
+ggplot(train_barrios, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+quantile(train_barrios$area, 0.995) 
+summary(train_barrios$area)
+
+#Areas desde 20 hasta 2000
+train_barrios<- train_barrios %>% 
+  filter(area <=1000)
+
+train_barrios<- train_barrios %>% 
+  filter(area >= 20)
+
+ggplot(train_barrios, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+#Baños
+ggplot(train_barrios, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+summary(train_barrios$bathrooms)
+
+train_barrios<- train_barrios %>% 
+  filter(bathrooms <=7)
+
+ggplot(train_barrios, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+#Niveles
+ggplot(train_barrios, aes(x=nivel)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+#Nas
+#estrato
+table(is.na(train_barrios$estrato))
+train_barrios <- train_barrios[!is.na(train_barrios$estrato),]
+
+
+#a los que nos quedan imputamos el promedio
+tt_bog1 = tt_bog1 %>% group_by(MANZ_CCNCT) %>% 
+  mutate(estrato = ifelse(is.na(estrato),
+                          yes = mean(estrato),
+                          no = estrato))
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -2698,48 +2760,6 @@ colorb[train_barrios_ch$bus5 == 1] <- "#134611"  #verdes, el mas oscuro es el ma
 
 
 leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorb, fillOpacity=1 , opacity=1, radius=1) 
-
-#quitamos los outliers
-
-#area
-ggplot(train_barrios, aes(x=area)) +
-  geom_boxplot(fill= "tomato", alpha=0.4)
-
-quantile(train_barrios$area, 0.995) 
-summary(train_barrios$area)
-
-#Areas desde 20 hasta 2000
-train_barrios<- train_barrios %>% 
-  filter(area <=1000)
-
-train_barrios<- train_barrios %>% 
-  filter(area >= 20)
-
-ggplot(train_barrios, aes(x=area)) +
-  geom_boxplot(fill= "tomato", alpha=0.4)
-
-#Baños
-ggplot(train_barrios, aes(x=bathrooms)) +
-  geom_boxplot(fill= "tomato", alpha=0.4)
-
-summary(train_barrios$bathrooms)
-
-train_barrios<- train_barrios %>% 
-  filter(bathrooms <=7)
-
-ggplot(train_barrios, aes(x=bathrooms)) +
-  geom_boxplot(fill= "tomato", alpha=0.4)
-
-#Niveles
-ggplot(train_barrios, aes(x=nivel)) +
-  geom_boxplot(fill= "tomato", alpha=0.4)
-
-
-#Nas
-#estrato
-table(is.na(train_barrios$estrato))
-train_barrios <- train_barrios[!is.na(train_barrios$estrato),]
-
 
 
 
