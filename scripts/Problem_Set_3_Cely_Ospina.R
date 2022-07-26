@@ -959,7 +959,7 @@ hw_bog_trunk <-  opq(bbox = getbb("Bogotá Colombia")) %>%
   add_osm_feature(key="highway" , value="trunk") 
 hw_bog_trunk <- hw_bog_trunk %>% osmdata_sf() 
 hw_bog_trunk <- hw_bog_trunk$osm_points %>% select(osm_id)
-leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog_trunk , color="red") #caracas, 30 y 80
+leaflet() %>% addTiles() %>% addCircleMarkers(data=hw_bog_trunk , color="red") #caracas, 30 y 80  ##esta la podemos usar como proxy de la distancia a sistema masivo de transporte
 
 hw_bog_primary <-  opq(bbox = getbb("Bogotá Colombia")) %>%
   add_osm_feature(key="highway" , value="primary") 
@@ -2139,6 +2139,9 @@ train_barrios <- train_barrios %>%
   mutate(price_more = if_else(train_barrios$price>(mean(train_barrios$price,na.rm=T)), 1, 0))
 summary(train_barrios$price_more)
 
+train_barrios <- train_barrios %>% 
+  mutate (price_more_f = if_else((train_barrios$price_more==1), "si", "no")) # "si" corresponde a los inmuebles que SI son mas caros que el promedio
+
 #AHORA SI
 
 fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
@@ -2153,7 +2156,7 @@ ctrl<- trainControl(method = "cv",
 set.seed(123)
 
 forest <- train(
-  price_more ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
+  price_more_f ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
     cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + cbd_more + oriente_more +
     penthouse + balcon + renov + vista + ascen + extras + parq,
   data = train_barrios,
@@ -2162,7 +2165,300 @@ forest <- train(
   family = "binomial",
   metric="Sens",)
 
+varImp(forest,scale=TRUE)
 
+#only 20 most important variables shown (out of 27)
+
+#Overall
+#bus_more      100.00
+#bed_1          98.22
+#bed_3          80.56
+#bed_2          78.42
+#bed_more       68.54
+#hw_more        44.35
+#hosp_more      33.37
+#play_more      29.58
+#cbd_more       26.94
+#bar_more       25.12
+#oriente_more   21.49
+#cundinamarca   20.76
+#cine_more      20.42
+#school_more    19.71
+#park_more      15.28
+#rest_more      15.10
+#balcon         15.04
+#univ_more      13.71
+#theatre_more   11.63
+#cafe_more      10.18
+
+forest2 <- train(
+  price_more_f ~ bus_more + bed_1 + hw_more + cbd_more + oriente_more + balcon,
+  data = train_barrios,
+  method = "rf",
+  trControl = ctrl,
+  family = "binomial",
+  metric="Sens",)      #######PENDIENTE CORRER ESTE PORQUE ES MAS UNA CURIOSIDAD QUE OTRA COSA
+
+#voy a correr uno con train_total
+
+intersect(names(train_total), names(test_total))
+
+#[1] "property_id"           "ad_type"               "start_date"            "end_date"              "created_on"           
+#[6] "l1"                    "l2"                    "l3"                    "rooms"                 "bedrooms"             
+#[11] "bathrooms"             "surface_total"         "surface_covered"       "price"                 "currency"             
+#[16] "title"                 "description"           "property_type"         "operation_type"        "test"                 
+#[21] "area_total"            "area_cubierta"         "area"                  "geometry"              "titlemin"             
+#[26] "descriptionmin"        "nivel"                 "balcon"                "extras"                "renov"                
+#[31] "vista"                 "parq"                  "ascen"                 "dist_cbd_ciudades"     "dist_highway_ciudades"
+#[36] "lon"                   "oriente"               "hw_more"               "cbd_more"              "bath_more"            
+#[41] "piso"                  "cundinamarca"          "bed_0"                 "bed_1"                 "bed_2"                
+#[46] "bed_3"                 "bed_more"              "area_more"      
+
+
+summary(train_total$price)
+train_total <- train_total %>% 
+  mutate(price_more = if_else(train_total$price>(mean(train_total$price,na.rm=T)), 1, 0))
+summary(train_total$price_more)
+
+train_total <- train_total %>% 
+  mutate (price_more_f = if_else((train_total$price_more==1), "si", "no"))
+
+forest_t <- train(
+  price_more_f ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + hw_more + cbd_more +
+     + balcon + renov + vista + ascen + extras + parq,
+  data = train_total,
+  method = "rf",
+  trControl = ctrl,
+  family = "binomial",
+  metric="Sens",)
+
+varImp(forest_t,scale=TRUE)
+
+
+#Overall
+#cbd_more     100.0000
+#bed_more      47.5032
+#cundinamarca  45.5445
+#bed_1         27.9830
+#bed_2         21.9200
+#bed_3         15.5067
+#balcon         6.1824
+#extras         2.8413
+#ascen          2.7775
+#hw_more        2.6452
+#parq           1.2199
+#vista          0.5855
+#renov          0.5417
+#bed_0          0.0000
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+#################     ESTADISTICAS DESCRIPTIVAS      ################################
+
+
+#por algun motivo no las puedo sacar cuando el objeto tiene geometria, entonces voy a generar una copia y ponerle drop geometry
+####SUPER ALERTA CON ESTO, TOCA CORRERLO SIEMPRE ANTE CUALQUIER CAMBIO MINIMO EN LA ORIGINAL
+
+#####
+#TABLA 1 (SUBSET DE BARRIOS)
+train_barrios_df <- train_barrios %>% st_drop_geometry()
+
+train_barrios_df %>%
+  select(l3, price, property_type, area, dist_bus, dist_playground, dist_highway, dist_cbd, bedrooms, bathrooms, balcon, extras, ascen, parq, renov) %>% #complementar porque en mi version aun tiene unos NAs
+  tbl_summary(by=l3)
+#pendiente ajustar y plotear
+
+train_total_df <- train_total %>% st_drop_geometry()
+
+######
+#TABLA 2 (totalidad de las ciudades)
+train_total_df %>%
+  select(l3, price, property_type, area, dist_highway_ciudades, dist_cbd_ciudades) %>% 
+  tbl_summary(by=l3)
+
+colnames(train_total_df)
+#pendiente ajustar y plotear
+
+
+####
+#MAPA 1
+
+#mostrar la correlacion entre la distancia al sistema de transporte y el precio de las viviendas
+#esto se hace en los subset
+
+
+##########
+#chapinero
+
+#voy a subsetear tt_barrios, es importante hacerlo despues de todas las transformaciones ####
+
+train_barrios_ch <- tt_barrios %>% subset(test == 0) #primero saco las de test
+train_barrios_ch <- train_barrios_ch %>% subset(cundinamarca == 1) #aqui si saco solo las de chapinero
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch , color="red") #vamos bien
+
+
+#como voy a comparar precio con distancia a sistema de transporte, hay que codificar ambas variables
+
+
+##como comparar el precio "puro" no es justo, lo voy a hacer por m2
+
+#creo la variable
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(preciomet2 = (price / area) )
+
+summary (train_barrios_ch$preciomet2) #aun tiene NAs porque no he terminado de limpiar base, ver con Sara
+
+
+#luego la voy a dividir como en quintiles
+
+lower_bound_p1<-0
+upper_bound_p1<-0.2
+
+lower_bound_p2<-0.2
+upper_bound_p2<-0.4
+
+lower_bound_p3<-0.4
+upper_bound_p3<-0.6
+
+lower_bound_p4<-0.6
+upper_bound_p4<-0.8
+
+lower_bound_p5<-0.8
+upper_bound_p5<-1
+
+
+upper_bound_precio1 <- quantile(train_barrios_ch$preciomet2, upper_bound_p1, na.rm=T)  #correr cuando ya esten eliminados los outliers #IMPORTANTE NO ELIMINARLOS EN TEST
+upper_bound_precio1 
+
+upper_bound_precio2 <- quantile(train_barrios_ch$preciomet2, upper_bound_p2, na.rm=T)  
+upper_bound_precio2 
+
+upper_bound_precio3 <- quantile(train_barrios_ch$preciomet2, upper_bound_p3, na.rm=T)  
+upper_bound_precio3
+
+upper_bound_precio4 <- quantile(train_barrios_ch$preciomet2, upper_bound_p4, na.rm=T)  
+upper_bound_precio4
+
+upper_bound_precio5 <- quantile(train_barrios_ch$preciomet2, upper_bound_p5, na.rm=T)  
+upper_bound_precio5
+
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio1 = if_else( preciomet2 <= upper_bound_precio1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio2 = if_else( preciomet2 <= upper_bound_precio2, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio2 = if_else( preciomet2 > upper_bound_precio1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio3 = if_else( preciomet2 <= upper_bound_precio3, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio3 = if_else( preciomet2 > upper_bound_precio2, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio4 = if_else( preciomet2 <= upper_bound_precio4, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio4 = if_else( preciomet2 > upper_bound_precio3, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio5= if_else( preciomet2 <= upper_bound_precio5, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(precio5 = if_else( preciomet2 > upper_bound_precio4, 1, 0))
+
+
+
+#ahora le puedo asignar colores por quintiles
+
+color <- rep(NA, nrow(train_barrios_ch))
+
+color[train_barrios_ch$precio1 == 1] <- "#00A6FB"   
+color[train_barrios_ch$precio2 == 1] <- "#0582CA"
+color[train_barrios_ch$precio3 == 1] <- "#006494"
+color[train_barrios_ch$precio4 == 1] <- "#003554"
+color[train_barrios_ch$precio5 == 1] <- "#051923"      #azules, el mas oscuro es el mas caro
+color[is.na(train_barrios_ch$preciomet2)] <- "#FFFFFF"
+
+
+###AQUI ME SALE EL MAPA DE PRECIO POR M2
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= color, fillOpacity=1 , opacity=1, radius=1) 
+#AQUI TRAE LOS PUNTOS DE ESTACION DE BUS
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= color, fillOpacity=1 , opacity=1, radius=1) %>% addCircleMarkers(data=bus_chap, color="red", radius=2)
+
+
+
+###
+#ahora voy a hacer lo mismo pero con "distancia a estacion de bus" y la idea es ver si los dos mapas se comportan parecido
+
+
+summary (train_barrios_ch$dist_bus)
+
+upper_bound_b1<-0.2
+upper_bound_b2<-0.4
+upper_bound_b3<-0.6
+upper_bound_b4<-0.8
+upper_bound_b5<-1
+
+
+upper_bound_bus1 <- quantile(train_barrios_ch$dist_bus, upper_bound_b1, na.rm=T)  #correr cuando ya esten eliminados los outliers #IMPORTANTE NO ELIMINARLOS EN TEST
+upper_bound_bus1 
+
+upper_bound_bus2 <- quantile(train_barrios_ch$dist_bus, upper_bound_b2, na.rm=T)  
+upper_bound_bus2 
+
+upper_bound_bus3 <- quantile(train_barrios_ch$dist_bus, upper_bound_b3, na.rm=T)  
+upper_bound_bus3
+
+upper_bound_bus4 <- quantile(train_barrios_ch$dist_bus, upper_bound_b4, na.rm=T)  
+upper_bound_bus4
+
+upper_bound_bus5 <- quantile(train_barrios_ch$dist_bus, upper_bound_b5, na.rm=T)  
+upper_bound_bus5
+
+
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus1 = if_else( dist_bus <= upper_bound_bus1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus2 = if_else( dist_bus <= upper_bound_bus2, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus2 = if_else( dist_bus > upper_bound_bus1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus3 = if_else( dist_bus <= upper_bound_bus3, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus3 = if_else( dist_bus > upper_bound_bus2, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus4 = if_else( dist_bus <= upper_bound_bus4, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus4 = if_else( dist_bus > upper_bound_bus3, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus5= if_else( dist_bus <= upper_bound_bus5, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(bus5 = if_else( dist_bus > upper_bound_bus4, 1, 0))
+
+
+
+
+colorb <- rep(NA, nrow(train_barrios_ch))
+
+colorb[train_barrios_ch$bus1 == 1] <- "#E8FCCF"   
+colorb[train_barrios_ch$bus2 == 1] <- "#96E072"
+colorb[train_barrios_ch$bus3 == 1] <- "#3DA35D"
+colorb[train_barrios_ch$bus4 == 1] <- "#3E8914"
+colorb[train_barrios_ch$bus5 == 1] <- "#134611"  #verdes, el mas oscuro es el mas lejos del bus
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorb, fillOpacity=1 , opacity=1, radius=1) 
 
 
 
