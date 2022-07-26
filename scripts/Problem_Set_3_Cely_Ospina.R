@@ -1712,10 +1712,11 @@ tt_barrios <- tt_barrios %>%
 
 
 #################################################################
-#####vamos a imputar los NA que nos quedan con vecinos espaciales 
+#####vamos a imputar los NA que nos quedan con vecinos espaciales (o sea con las obs de la base que estan de casualidad en la misma manzana)
 
 ###AQUI SE PARTE TT_BARRIOS
 
+#########
 ###Bogota
 tt_bog <- tt_barrios %>% subset(l2 == "Cundinamarca") #15837
 
@@ -1793,6 +1794,9 @@ table(is.na(tt_bog1$estrato)) #tenemos 717 NA #bien
 summary(tt_bog1$estrato) #ahora el promedio es estrato 4-5  ##tt_bog1 tiene 15837 obs, esta correcta    
 
 
+
+
+############
 ####Medellin
 
 colnames(tt_barrios)
@@ -1806,11 +1810,6 @@ tt_mde1 = st_join(x = tt_med,y = mmede)
 colnames(tt_mde1) #notar que tt_mde1 tiene 921.703 observaciones, eso no tiene sentido, creo que por algun motivo se duplican
 
 
-#aqui le voy a intentar devolver el tamano original
-
-tt_mde1prueba <- tt_mde1
-
-tt_mde1prueba %>% distinct()
 
 
 ##AREA: Imputamos las observaciones con la mediana de las manzanas
@@ -1883,6 +1882,7 @@ table(is.na(tt_mde1$estrato)) #tenemos 55 NA
 summary(tt_mde1$estrato) #ahora el promedio es estrato 4-5
 
 
+export(tt_mde1,"stores/tt_mde1.rds")
 
 
 ######################################################################################
@@ -1895,7 +1895,7 @@ summary(tt_mde1$estrato) #ahora el promedio es estrato 4-5
 ##Guarde el resultado de las bases del censo en stores, saltar hasta que se cargan 
 ######################################################################################
 
-
+#TODAS ESTAS LINEAS LAS PONEMOS PARA QUE NO CORRAN PORQUE YA GUARDAMOS EL OBJETO EN STORES#
 # ## censo data
 # setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
 # 
@@ -2034,7 +2034,8 @@ tt_bog1 = tt_bog1 %>% group_by(MANZ_CCNCT) %>%
                           no = estrato))
 
 table(is.na(tt_bog1$estrato)) #339 NAs
-export(tt_bog1,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina/stores/tt_bog1.rds")
+
+export(tt_bog1,"stores/tt_bog1.rds")
 
 
 #Medellin
@@ -2047,26 +2048,37 @@ tt_mde1 = tt_mde1 %>% group_by(MANZ_CCNCT) %>%
 
 table(is.na(tt_mde1$estrato)) #24 NAs
 
-export(tt_mde1,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina/stores/tt_mde1.rds")
+export(tt_mde1,"stores/tt_mde1.rds")
+
+export(tt_sf,"stores/tt_sf.rds")
+
 
 ######################################################################################
 ######################################################################################
 ######################################################################################
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+######################################################################################
+######################################################################################
+######################################################################################
+
 #AHORA HAY QUE UNIR NUEVAMENTE PARA OBTENER TT_BARRIOS DE NUEVO
 
 
-
-
-######################################################################################
-######################################################################################
-######################################################################################
+#copia de seguridad ACTUALIZADA
+#YA TIENE TODA LA INFO ESPACIAL, DE TEXTO, DE VECINOS Y DE CENSO
 
 tt_bog1<-readRDS("stores/tt_bog1.Rds")    
 tt_mde1<-readRDS("stores/tt_mde1.Rds")  
+tt_sf <- readRDS("stores/tt_sf.Rds")  
+
 
 #union bases
 
-tt_barrios <- rbind(tt_bog1,tt_mde1)
+tt_barrios <- rbind(tt_bog1,tt_mde1)   #VOLVEMOS A NOMBRAR LA UNION COMO TT_BARRIOS PERO AHORA OBVIAMENTE AUMENTA NUM DE VARIABLES
 
 ######################################################################################
 ######################################################################################
@@ -2085,6 +2097,7 @@ colnames(tt_barrios)
 #[36] "dist_highway"    "dist_cbd"        "lon"             "oriente"         "titlemin"        "descriptionmin"  "nivel"          
 #[43] "piso"            "penthouse"       "balcon"          "renov"           "vista"           "ascen"           "extras"         
 #[50] "parq"    
+#HAY MAS VARIABLES DE MANZANA
 
 colnames (tt_sf)
 #[1] "property_id"           "ad_type"               "start_date"            "end_date"              "created_on"           
@@ -2095,10 +2108,12 @@ colnames (tt_sf)
 #[26] "descriptionmin"        "nivel"                 "balcon"                "extras"                "renov"                
 #[31] "vista"                 "parq"                  "ascen"                 "dist_cbd_ciudades"     "dist_highway_ciudades"
 #[36] "lon"                   "oriente"              
+#HAY MAS VARIABLES DE MANZANA
 
 
 ## DEPARTAMENTO
 #"l2" 
+
 tt_barrios <- tt_barrios %>% mutate (cundinamarca = if_else (tt_barrios$l2 == "Cundinamarca", 1, 0)) #cundinamarca
 tt_sf <- tt_sf %>% mutate (cundinamarca = if_else (tt_sf$l2 == "Cundinamarca", 1, 0))
 
@@ -2268,7 +2283,8 @@ tt_barrios <- tt_barrios %>%
 summary(tt_barrios$oriente_more)
 
 
-#variables de texto ya estan
+#variables de texto ya estan convertidas en dummies
+
 
 #########
 #EN CONCLUSION LAS VARIABLES DUMMIES QUE TENEMOS SON LAS SIGUIENTES
@@ -2301,6 +2317,7 @@ summary(tt_barrios$oriente_more)
 ######################################################################################
 ######################################################################################
 
+#SEPARACION DE TRAIN Y TEST
 
 #como ya tenemos todo lo anterior, vamos a separar train y test nuevamente
 
@@ -2312,20 +2329,50 @@ summary(tt_barrios$test)
 test_barrios <- tt_barrios %>% subset(test == 1) 
 train_barrios <- tt_barrios %>% subset(test == 0) 
 
+
+export(test_total,"stores/test_total.rds")
+export(train_total,"stores/train_total.rds")
+export(test_barrios,"stores/test_barrios.rds")
+export(train_barrios,"stores/train_barrios.rds")
+
+
 ######################################################################################
 ######################################################################################
 ######################################################################################
 
-#quitamos los outliers
+#CARGUE DE SEGURIDAD DE TRAIN Y TEST
 
+
+test_total <- readRDS("stores/test_total.rds")    #####################################
+train_total <- readRDS("stores/train_total.rds")  #####################################
+test_barrios<- readRDS("stores/test_barrios.rds") #####################################
+train_barrios<- readRDS("stores/train_barrios.rds") ###################################
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+#ultima limpieza de train  
+#quitamos los outliers, vemos NAs, etc   #esto se hace aca porque si lo hubieramos hecho antes habriamos arruinado test
+
+
+#####
+#train_barrios (subset de observaciones solo en chapinero y el poblado)
+
+#####
 #area
+
+table(is.na(train_barrios$area)) #sin NAs
+
 ggplot(train_barrios, aes(x=area)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
 quantile(train_barrios$area, 0.995) 
 summary(train_barrios$area)
 
-#Areas desde 20 hasta 2000
+
+#Areas desde 20 hasta 1000
 train_barrios<- train_barrios %>% 
   filter(area <=1000)
 
@@ -2335,7 +2382,11 @@ train_barrios<- train_barrios %>%
 ggplot(train_barrios, aes(x=area)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
+######
 #Baños
+
+table(is.na(train_barrios$bathrooms)) #sin NAs
+
 ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
@@ -2347,22 +2398,273 @@ train_barrios<- train_barrios %>%
 ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
-#Niveles
+
+########
+#Nivel
+
+table(is.na(train_barrios$nivel)) #tiene 21 NAs que no se pudieron imputar de ninguna manera 
+
+
+train_barrios <- train_barrios %>%
+  mutate(niv_med = median(nivel,na.rm=T))
+
+train_barrios <- train_barrios %>% 
+  mutate(nivel = ifelse(is.na(nivel),
+                            yes = niv_med,
+                            no = nivel))
+
 ggplot(train_barrios, aes(x=nivel)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
 
-#Nas
+#######
 #estrato
-table(is.na(train_barrios$estrato))
-train_barrios <- train_barrios[!is.na(train_barrios$estrato),]
 
+table(is.na(train_barrios$estrato)) # 327 NAs que no se pudieron imputar
 
-#a los que nos quedan imputamos el promedio
-tt_bog1 = tt_bog1 %>% group_by(MANZ_CCNCT) %>% 
+train_barrios <- train_barrios %>%
+  mutate(est_med = median(estrato,na.rm=T))
+
+train_barrios <- train_barrios %>% 
   mutate(estrato = ifelse(is.na(estrato),
-                          yes = mean(estrato),
+                        yes = est_med,
+                        no = estrato))
+
+ggplot(train_barrios, aes(x=estrato)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+#######
+# price
+
+table(is.na(train_barrios$price)) #sin NAs
+
+ggplot(train_barrios, aes(x=price)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+######### train_barrios queda de 16036 obs
+
+
+###############################################
+###############################################
+
+#####
+#train_total (incluye observaciones de toda la ciudad)
+
+
+#####
+#area
+ 
+table(is.na(train_total$area)) #47602 -- esto no se pudo imputar con fuentes externas entonces pondremos la mediana
+
+train_total <- train_total %>%
+  mutate(area_med = median(area,na.rm=T))
+
+train_total <- train_total %>% 
+  mutate(area = ifelse(is.na(area),
+                          yes = area_med,
+                          no = area))
+
+#ya no tiene NAs
+
+ggplot(train_total, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4) #pero tiene muchos outliers
+
+quantile(train_total$area, 0.995) 
+summary(train_total$area)
+
+
+#Areas desde 20 hasta 1000
+train_total<- train_total %>% 
+  filter(area <=1000)
+
+train_total<- train_total %>% 
+  filter(area >= 20)
+
+ggplot(train_total, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)  #mejora, obviamente perdemos algunas observaciones, aprox 1500
+
+
+
+######
+#Baños
+
+table(is.na(train_total$bathrooms)) #16662 NAs
+
+train_total <- train_total %>%
+  mutate(bano_med = median(bathrooms,na.rm=T))
+
+train_total <- train_total %>% 
+  mutate(bathrooms = ifelse(is.na(bathrooms),
+                       yes = bano_med,
+                       no = bathrooms))
+
+ggplot(train_total, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+train_total<- train_total %>% 
+  filter(bathrooms <=7)
+
+ggplot(train_total, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+
+########
+#Nivel
+
+table(is.na(train_total$nivel)) # 88828 NAs
+
+
+train_total <- train_total %>%
+  mutate(niv_med = median(nivel,na.rm=T))
+
+train_total <- train_total %>% 
+  mutate(nivel = ifelse(is.na(nivel),
+                        yes = niv_med,
+                        no = nivel))
+
+ggplot(train_total, aes(x=nivel)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+#######
+#estrato
+
+table(is.na(train_total$estrato)) # 10101 NAs que no se pudieron imputar
+
+
+train_total <- train_total %>% 
+  mutate(estrato = ifelse(is.na(estrato),
+                          yes = 3,
                           no = estrato))
+
+summary(train_total$estrato)
+
+ggplot(train_total, aes(x=estrato)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+
+#######
+# price
+
+table(is.na(train_total$price)) #sin NAs
+
+ggplot(train_total, aes(x=price)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+######### train_total queda de 105585 obs
+
+
+###############################################
+###############################################
+
+#####
+#test_barrios (test para solo nuestras variables de barrios de interes) #11150 OBS
+
+#IMPORTANTE, EN TEST PODEMOS IMPUTAR VALORES PERO NO SE PUEDE ELIMINAR NI UNA SOLA OBSERVACION
+
+#####
+#area
+
+table(is.na(test_barrios$area)) 
+
+test_barrios <- test_barrios %>%
+  mutate(area_med = median(area,na.rm=T))
+
+test_barrios <- test_barrios %>% 
+  mutate(area = ifelse(is.na(area),
+                       yes = area_med,
+                       no = area))
+
+#ya no tiene NAs
+
+ggplot(test_barrios, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4) #pero tiene outliers
+
+
+
+
+######
+#Baños
+
+table(is.na(test_barrios$bathrooms)) 
+
+test_barrios <- test_barrios %>%
+  mutate(bano_med = median(bathrooms,na.rm=T))
+
+test_barrios <- test_barrios %>% 
+  mutate(bathrooms = ifelse(is.na(bathrooms),
+                            yes = bano_med,
+                            no = bathrooms))
+
+ggplot(test_barrios, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+
+
+########
+#Nivel
+
+table(is.na(test_barrios$nivel)) 
+
+
+test_barrios <- test_barrios %>%
+  mutate(niv_med = median(nivel,na.rm=T))
+
+test_barrios <- test_barrios %>% 
+  mutate(nivel = ifelse(is.na(nivel),
+                        yes = niv_med,
+                        no = nivel))
+
+ggplot(test_barrios, aes(x=nivel)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+#######
+#estrato
+
+table(is.na(test_barrios$estrato)) 
+
+
+test_barrios <- test_barrios %>% 
+  mutate(estrato = ifelse(is.na(estrato),
+                          yes = 4,
+                          no = estrato))
+
+summary(test_barrios$estrato)
+
+ggplot(test_barrios, aes(x=estrato)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+
+#######
+# price
+
+table(is.na(test_barrios$price)) #TODOS SON NAS PRECISAMENTE PORQUE ES TEST
+
+######### test_barrios queda de 11150 obs
+
+
+
+#####
+#test_total (test para las ciudades enteras) #11150 OBS == todo test queda en chapinero y poblado
+
+#O SEA QUE TEST_TOTAL PODEMOS CLONARLO DE TEST_BARRIOS
+
+#IMPORTANTE, EN TEST PODEMOS IMPUTAR VALORES PERO NO SE PUEDE ELIMINAR NI UNA SOLA OBSERVACION
+
+test_total <- test_barrios
+
+######### test_barrios queda de 11150 obs
+
+
+
+
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -2518,7 +2820,7 @@ forest2 <- train(
   method = "rf",
   trControl = ctrl,
   family = "binomial",
-  metric="Sens",)      #######PENDIENTE CORRER ESTE PORQUE ES MAS UNA CURIOSIDAD QUE OTRA COSA
+  metric="Sens",)      #######PENDIENTE 
 
 #voy a correr uno con train_total
 
@@ -2577,7 +2879,7 @@ varImp(forest_t,scale=TRUE)
 ######################################################################################
 ######################################################################################
 
-#################     ESTADISTICAS DESCRIPTIVAS      ################################
+#################     ESTADISTICAS DESCRIPTIVAS      ################################  #voy aca
 
 
 #por algun motivo no las puedo sacar cuando el objeto tiene geometria, entonces voy a generar una copia y ponerle drop geometry
