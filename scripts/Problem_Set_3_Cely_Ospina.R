@@ -56,8 +56,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -1005,6 +1005,7 @@ head(tt_sf$dist_highway_ciudades)
 
 ##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES
 
+load("C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data/problem set 3/backup_jul22_workspace.RData")
 
 
 ######################################################################################
@@ -1130,7 +1131,7 @@ tt_sf = tt_sf %>%
                        paste0(y1,"|",y2,"|",y3,"|",y4,"|",y5,"|",y6,"|",y7,"|",y8,"|",y9,"|",y10,"|",y11,"|",y12,"|",y13)),
                        bathrooms))
 
-table(is.na(tt_sf$bathrooms)) . 
+table(is.na(tt_sf$bathrooms)) 
 
 #Sacamos solo los numeros de las observaciones
 tt_sf$bathrooms<-str_replace_all(tt_sf$bathrooms, pattern = "con" , replacement = "1")
@@ -1156,8 +1157,6 @@ tt_sf = tt_sf %>%
 
 #Revisamos cuantas NA tiene 
 table(is.na(tt_sf$bathrooms)) ##18824 NA, imputamos 15519
-
-
 
 
 ######NIVEL >> especificamos mas, no solo alpha porque esta tomando observaciones como piso madera/piso nuevo y así 
@@ -1389,6 +1388,28 @@ tt_sf <- tt_sf %>%
 
 summary(tt_sf$ascen) #15% de las propiedades tienen ascensor
 
+###Estrato
+
+q1 <- "[:space:]+estrato+[:space:]+[:digit:]" 
+q2 <- "[:space:]+estrato+[:space:]+[:space:]+[:digit:]"
+q3 <- "[:space:]+estrato+[:digit:]"
+q4 <- "estrato+[:space:]+[:digit:]"
+
+#nueva variable estrato
+tt_sf <- tt_sf %>% 
+  mutate(estrato = str_extract(string=tt_sf$description , pattern= paste0(q1,"|",q2,"|",q3,"|",q4)))
+
+tt_sf$estrato<-str_remove_all(tt_sf$estrato,"estrato")
+tt_sf$estrato<-str_remove_all(tt_sf$estrato, "[\n]")
+tt_sf$estrato<-as.numeric(tt_sf$estrato)
+
+table(is.na(tt_sf$estrato)) #tenemos 113844 NA
+summary(tt_sf$estrato) #el promedio es estrato 3-4
+
+##Apartamentos
+colnames(tt_sf)
+tt_sf <- tt_sf %>% 
+  mutate(apto = if_else( tt_sf$property_type=="Casa",0,1)) 
 
 
 ############################################################################################################
@@ -1671,19 +1692,197 @@ tt_barrios <- tt_barrios %>%
 summary(tt_barrios$ascen) 
 
 
+###Estrato
 
-#con esto ya tenemos las variables de texto
+q1 <- "[:space:]+estrato+[:space:]+[:digit:]" 
+q2 <- "[:space:]+estrato+[:space:]+[:space:]+[:digit:]"
+q3 <- "[:space:]+estrato+[:digit:]"
+q4 <- "estrato+[:space:]+[:digit:]"
+
+#nueva variable estrato
+tt_barrios <- tt_barrios %>% 
+  mutate(estrato = str_extract(string=tt_barrios$description , pattern= paste0(q1,"|",q2,"|",q3,"|",q4)))
+
+tt_barrios$estrato<-str_remove_all(tt_barrios$estrato,"estrato")
+tt_barrios$estrato<-str_remove_all(tt_barrios$estrato, "[\n]")
+tt_barrios$estrato<-as.numeric(tt_barrios$estrato)
+
+table(is.na(tt_barrios$estrato)) #tenemos 113844 NA
+summary(tt_barrios$estrato) #el promedio es estrato 3-4
+
+##Apartamentos
+colnames(tt_barrios)
+tt_barrios <- tt_barrios %>% 
+  mutate(apto = if_else( tt_barrios$property_type=="Casa",0,1)) 
+
+#####vamos a imputar los NA que nos quedan con vecinos espaciales 
+
+###Bogota
+tt_bog <- tt_barrios %>% subset(l2 == "Cundinamarca") 
+
+## spatial join
+sf::sf_use_s2(FALSE)
+mbog <- st_transform(mbog, st_crs(tt_bog))
+tt_bog1 = st_join(x = tt_bog,y = mbog)
+
+colnames(tt_bog1)
+
+##AREA: Imputamos las observaciones con la mediana de las manzanas
+table(is.na(tt_bog1$bathrooms)) #2039 na
+tt_bog1 = tt_bog1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(area_m=median(area,na.rm=T))
+
+tt_bog1 = tt_bog1 %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                       as.numeric(tt_bog1$area_m),
+                       area)) 
+
+summary(tt_bog1$area) #hay datos muy raros
+#    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+#   2.0    122.0    142.0    205.1    163.5     198000.0 
+
+table(is.na(tt_bog1$area)) #ahora no tenemos NA
+
+##BANOS
+table(is.na(tt_bog1$bathrooms)) #tenemos 2039
+
+tt_bog1 = tt_bog1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(bathrooms_m=median(bathrooms,na.rm=T))
+
+tt_bog1 = tt_bog1 %>% 
+  mutate(bathrooms = ifelse(is.na(bathrooms)==T,
+                       as.numeric(tt_bog1$bathrooms_m),
+                       bathrooms)) 
+table(is.na(tt_bog1$bathrooms)) #ahora no tenemos NA
+summary(tt_bog1$bathrooms) #hay datos muy altos
+
+##NIVEL
+table(is.na(tt_bog1$nivel)) #tenemos 3950
+
+tt_bog1 = tt_bog1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(nivel_m=median(nivel,na.rm=T))
+
+tt_bog1 = tt_bog1 %>% 
+  mutate(nivel = ifelse(is.na(nivel)==T,
+                        as.numeric(tt_bog1$nivel_m),
+                        nivel)) 
+
+table(is.na(tt_bog1$nivel)) #no tenemos
+summary(tt_bog1$nivel) 
+
+##ESTRATO
+table(is.na(tt_bog1$estrato)) #tenemos 15604
+
+tt_bog1 = tt_bog1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(estrato_m=median(estrato,na.rm=T))
+
+tt_bog1 = tt_bog1 %>% 
+  mutate(estrato = ifelse(is.na(estrato)==T,
+                        as.numeric(tt_bog1$estrato_m),
+                        estrato)) 
+
+table(is.na(tt_bog1$estrato)) #tenemos 717 NA
+summary(tt_bog1$estrato) #ahora el promedio es estrato 4-5
+
+
+####Medellin
+
+colnames(tt_barrios)
+tt_med <- tt_barrios %>% subset(l2 == "Antioquia") 
+
+## spatial join
+sf::sf_use_s2(FALSE)
+mmede <- st_transform(mmede, st_crs(tt_med))
+tt_mde1 = st_join(x = tt_med,y = mmede)
+
+colnames(tt_mde1)
+
+##AREA: Imputamos las observaciones con la mediana de las manzanas
+table(is.na(tt_mde1$area)) #5984
+
+tt_mde1 = tt_mde1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(area_m=median(area,na.rm=T))
+
+tt_mde1 = tt_mde1 %>% 
+  mutate(area = ifelse(is.na(area)==T,
+                       as.numeric(tt_mde1$area_m),
+                       area)) 
+
+summary(tt_mde1$area) #hay datos muy raros
+
+#Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+#2.0    129.0    141.0    204.9    152.0    198000.0
+
+table(is.na(tt_mde1$area)) #ahora no tenemos NA
+
+##BANOS
+table(is.na(tt_mde1$bathrooms)) #tenemos 1911
+
+tt_mde1 = tt_mde1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(bathrooms_m=median(bathrooms,na.rm=T))
+
+tt_mde1 = tt_mde1 %>% 
+  mutate(bathrooms = ifelse(is.na(bathrooms)==T,
+                            as.numeric(tt_mde1$bathrooms_m),
+                            bathrooms)) 
+table(is.na(tt_mde1$bathrooms)) #ahora no tenemos NA
+summary(tt_mde1$bathrooms) #hay datos muy altos
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#1.000   2.000   3.000   2.882   4.000  13.000 
+
+##NIVEL
+table(is.na(tt_mde1$nivel)) #tenemos 1911
+
+tt_mde1 = tt_mde1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(nivel_m=median(nivel,na.rm=T))
+
+tt_mde1 = tt_mde1 %>% 
+  mutate(nivel = ifelse(is.na(nivel)==T,
+                        as.numeric(tt_mde1$nivel_m),
+                        nivel)) 
+
+table(is.na(tt_mde1$nivel)) #no tenemos
+summary(tt_mde1$nivel) 
+
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#1.000   2.000   3.000   2.882   4.000  13.000 
+
+
+##ESTRATO
+table(is.na(tt_mde1$estrato)) #tenemos 11356
+
+tt_mde1 = tt_mde1 %>%
+  group_by(MANZ_CCDGO) %>%
+  mutate(estrato_m=median(estrato,na.rm=T))
+
+tt_mde1 = tt_mde1 %>% 
+  mutate(estrato = ifelse(is.na(estrato)==T,
+                          as.numeric(tt_mde1$estrato_m),
+                          estrato)) 
+
+table(is.na(tt_mde1$estrato)) #tenemos 55 NA
+summary(tt_mde1$estrato) #ahora el promedio es estrato 4-5
+
+
+
 
 ######################################################################################
 ######################################################################################
 ######################################################################################
 
-
-
-#####################################################################################
 #Se usara informacion obtenida por el DANE en el censo para complementar algunas variables importantes con NA
 
-####Github no aguanta el peso de la información que se tiene ## por este motivo por ahora no lo puedo correr Sara, lo dejo pendiente por si puedes guardar el objeto y guardarlo en stores
+######################################################################################
+##Guarde el resultado de las bases del censo en stores, saltar hasta que se cargan 
+######################################################################################
+
 
 ## censo data
 setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
@@ -1725,6 +1924,10 @@ censo_bog = db %>%
             sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
             med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
             med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
+
+colnames (censo_bog)
+## export data
+export(censo_bog,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_bog.rds")
 
 
 ## load data
@@ -1769,12 +1972,72 @@ censo_med = db_med %>%
             med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
 
 
-#Unir Bogota y Medellin
-censos <- rbind (censo_bog,censo_med)
+export(censo_med,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_med.rds")
 
-#unir con las manzanas existentes >> necesitamos que las manzanas tengan id. 
-house_censo = st_join(house_mnz,mnz_censo)
-colnames(house_censo)
+######################################################################################
+######################################################################################
+######################################################################################
+
+######################################################################################
+#AQUI PUEDES CARGAR LAS QUE GUARDE CON LA INFORMACIÓN DEL CENSO 
+
+##############unir bases 
+
+setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+
+#traer las bases de train y de test
+
+censo_bog<-readRDS("stores/censo_bog.Rds")     #194 obs
+censo_med<-readRDS("stores/censo_med.Rds")  #42512obs
+
+
+#Unir base de bogota con el censo 
+colnames(censo_bog)
+colnames(tt_bog1)
+
+censo_bog<-rename(censo_bog, MANZ_CCNCT = COD_DANE_ANM)
+
+tt_bog1$MANZ_CCNCT<-as.numeric(tt_bog1$MANZ_CCNCT)
+
+tt_bog1 = left_join(tt_bog1,censo_bog,by=c("MANZ_CCNCT"))
+
+#Unir base de medellin con el censo 
+colnames(censo_med)
+colnames(tt_mde1)
+
+censo_med<-rename(censo_med, MANZ_CCNCT = COD_DANE_ANM)
+
+tt_mde1$MANZ_CCNCT<-as.numeric(tt_mde1$MANZ_CCNCT)
+censo_med$MANZ_CCNCT<-as.numeric(censo_med$MANZ_CCNCT)
+
+tt_mde1 = left_join(tt_mde1,censo_med,by=c("MANZ_CCNCT"))
+
+
+
+#imputamos estrato
+
+#Bogota
+table(is.na(tt_bog1$estrato)) #717 NAs
+colnames(tt_bog1)
+
+tt_bog1 = tt_bog1 %>% group_by(MANZ_CCNCT) %>% 
+  mutate(estrato = ifelse(is.na(estrato),
+                          yes = med_VA1_ESTRATO,
+                          no = estrato))
+
+table(is.na(tt_bog1$estrato)) #339 NAs
+
+#Medellin
+colnames(tt_mde1)
+
+tt_mde1 = tt_mde1 %>% group_by(MANZ_CCNCT) %>% 
+  mutate(estrato = ifelse(is.na(estrato),
+                          yes = med_VA1_ESTRATO,
+                          no = estrato))
+
+table(is.na(tt_mde1$estrato)) #23 NAs
+
 
 
 
@@ -1783,24 +2046,6 @@ colnames(house_censo)
 ######################################################################################
 ######################################################################################
 
-
-#####ESTRATOS BOGOTA (shapefile)
-
-est_bogota <-read_sf("stores/estratosbogota/ManzanaEstratificacion.shp")
-
-est_bogota <- st_transform(est_bogota, 4326)
-
-leaflet() %>% addTiles() %>% addPolygons(data=est_bogota) 
-
-
-#cargo bien, pendiente asignarle los valores de estrato a las observaciones ##continua pendiente
-
-
-
-
-######################################################################################
-######################################################################################
-######################################################################################
 
 
 ###ES NECESARIO GENERAR TODAS LAS VARIABLES COMO DUMMIES PARA PODERLAS METER AL RANDOM FOREST
@@ -2460,6 +2705,91 @@ colorb[train_barrios_ch$bus5 == 1] <- "#134611"  #verdes, el mas oscuro es el ma
 
 leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorb, fillOpacity=1 , opacity=1, radius=1) 
 
+#quitamos los outliers
+
+#area
+ggplot(train_barrios, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+quantile(train_barrios$area, 0.995) 
+summary(train_barrios$area)
+
+#Areas desde 20 hasta 2000
+train_barrios<- train_barrios %>% 
+  filter(area <=1000)
+
+train_barrios<- train_barrios %>% 
+  filter(area >= 20)
+
+ggplot(train_barrios, aes(x=area)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+#Baños
+ggplot(train_barrios, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+summary(train_barrios$bathrooms)
+
+train_barrios<- train_barrios %>% 
+  filter(bathrooms <=7)
+
+ggplot(train_barrios, aes(x=bathrooms)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+#Niveles
+ggplot(train_barrios, aes(x=nivel)) +
+  geom_boxplot(fill= "tomato", alpha=0.4)
+
+
+#Nas
+#estrato
+table(is.na(train_barrios$estrato))
+train_barrios <- train_barrios[!is.na(train_barrios$estrato),]
+
+
+
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+#### Escoger la mejor transformacion para y 
+ggplot(train_barrios, aes(x=price))+
+  geom_histogram(fill="darkblue", alpha = 0.4)
+
+ggplot(train_barrios, aes(x=log(price)))+
+  geom_histogram(fill="darkblue", alpha = 0.4)
+
+ggplot(train_barrios, aes(x=sqrt(price)))+
+  geom_histogram(fill="darkblue", alpha = 0.4)
+
+
+#voy a ir agregando los modelos
+
+
+######OLS#####
+modelo_ols<-lm(sqrt(price) ~ INCLUIR VARIABLES)
+
+stargazer(modelo_ols, type = "text")
+train_barrios$predict_lm<-(predict(modelo_ols, newdata = train_barrios))^2
+summary(train_barrios$predict_lm)
+
+mse_modelo_ols <- mean((train_barrios$predict_lm - train_barrios$price)^2)
+
+
+######Lasso#####
+###entrenamiento y test
+m_barrios<-as.data.frame(cbind(VARIABLES))
+colnames(m_barrios)<-c("VARIABLES")
+
+m_barrios<- as.data.frame(scale(m_barrios, center = TRUE, scale = TRUE))
+
+x_train_lasso <- model.matrix("variables", data = m_barrios)[, -1]
+
+y_train_lasso <- m_barrios$price
+
+
 
 
 ######################################################################################
@@ -2480,6 +2810,8 @@ save.image(file = "C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data
 #As a consequence of saving your workspace, now you can load it so you won’t need to run the code to obtain those objects again.
 
 load("C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data/problem set 3/backup_jul22_workspace.RData")
+
+
 
 
 
