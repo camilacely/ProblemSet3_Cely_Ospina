@@ -46,9 +46,6 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 
 
 
-
-
-
 #####################
 ##cargar los datos #
 #####################
@@ -56,8 +53,8 @@ predict<- stats::predict  #con esto soluciono el problema de que haya mas de una
 ##Establecer el directorio
 
 #setwd
-setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
 #traer las bases de train y de test
 
@@ -1006,7 +1003,6 @@ head(tt_sf$dist_highway_ciudades)
 ##CON ESTO YA TENEMOS LAS VARIABLES ESPACIALES
 
 
-
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -1714,20 +1710,29 @@ colnames(tt_barrios)
 tt_barrios <- tt_barrios %>% 
   mutate(apto = if_else( tt_barrios$property_type=="Casa",0,1)) 
 
+
+#################################################################
 #####vamos a imputar los NA que nos quedan con vecinos espaciales 
 
+###AQUI SE PARTE TT_BARRIOS
+
 ###Bogota
-tt_bog <- tt_barrios %>% subset(l2 == "Cundinamarca") 
+tt_bog <- tt_barrios %>% subset(l2 == "Cundinamarca") #15837
 
 ## spatial join
 sf::sf_use_s2(FALSE)
 mbog <- st_transform(mbog, st_crs(tt_bog))
-tt_bog1 = st_join(x = tt_bog,y = mbog)
+tt_bog1 = st_join(x = tt_bog,y = mbog) #mismo num de obs pero con mas variables
 
 colnames(tt_bog1)
 
 ##AREA: Imputamos las observaciones con la mediana de las manzanas
+
+table(is.na(tt_bog1$area)) 
+
+
 table(is.na(tt_bog1$area)) #2039 na
+
 tt_bog1 = tt_bog1 %>%
   group_by(MANZ_CCDGO) %>%
   mutate(area_m=median(area,na.rm=T))
@@ -1739,7 +1744,7 @@ tt_bog1 = tt_bog1 %>%
 
 summary(tt_bog1$area) #hay datos muy raros
 #    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-#   2.0    122.0    142.0    205.1    163.5     198000.0 
+#   2.0    122.0    142.0    205.1    163.5     198000.0   #despues les limpiamos outliers pero cuando hayamos dividido train y test
 
 table(is.na(tt_bog1$area)) #ahora no tenemos NA
 
@@ -1755,7 +1760,7 @@ tt_bog1 = tt_bog1 %>%
                        as.numeric(tt_bog1$bathrooms_m),
                        bathrooms)) 
 table(is.na(tt_bog1$bathrooms)) #ahora no tenemos NA
-summary(tt_bog1$bathrooms) #hay datos muy altos
+summary(tt_bog1$bathrooms) #hay datos muy altos    #despues les limpiamos outliers pero cuando hayamos dividido train y test
 
 ##NIVEL
 table(is.na(tt_bog1$nivel)) #tenemos 3950
@@ -1770,7 +1775,7 @@ tt_bog1 = tt_bog1 %>%
                         nivel)) 
 
 table(is.na(tt_bog1$nivel)) #no tenemos
-summary(tt_bog1$nivel) 
+summary(tt_bog1$nivel)                   ##se me hace demasiado extraño que tenga exactamente la misma distribucion de bathrooms
 
 ##ESTRATO
 table(is.na(tt_bog1$estrato)) #tenemos 15604
@@ -1784,8 +1789,8 @@ tt_bog1 = tt_bog1 %>%
                         as.numeric(tt_bog1$estrato_m),
                         estrato)) 
 
-table(is.na(tt_bog1$estrato)) #tenemos 717 NA
-summary(tt_bog1$estrato) #ahora el promedio es estrato 4-5
+table(is.na(tt_bog1$estrato)) #tenemos 717 NA #bien
+summary(tt_bog1$estrato) #ahora el promedio es estrato 4-5  ##tt_bog1 tiene 15837 obs, esta correcta    
 
 
 ####Medellin
@@ -1798,7 +1803,15 @@ sf::sf_use_s2(FALSE)
 mmede <- st_transform(mmede, st_crs(tt_med))
 tt_mde1 = st_join(x = tt_med,y = mmede)
 
-colnames(tt_mde1)
+colnames(tt_mde1) #notar que tt_mde1 tiene 921.703 observaciones, eso no tiene sentido, creo que por algun motivo se duplican
+
+
+#aqui le voy a intentar devolver el tamano original
+
+tt_mde1prueba <- tt_mde1
+
+tt_mde1prueba %>% distinct()
+
 
 ##AREA: Imputamos las observaciones con la mediana de las manzanas
 table(is.na(tt_mde1$area)) #5984
@@ -1883,95 +1896,95 @@ summary(tt_mde1$estrato) #ahora el promedio es estrato 4-5
 ######################################################################################
 
 
-## censo data
-setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
-
-
-## load data
-mgn = read_csv("CNPV2018_MGN_A2_11.CSV")
-colnames(mgn)
-distinct_all(mgn[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
-
-hog = read_csv("CNPV2018_2HOG_A2_11.CSV")
-colnames(hog)
-distinct_all(hog[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
-
-viv = read_csv("CNPV2018_1VIV_A2_11.CSV") 
-colnames(viv)
-distinct_all(viv[,c("COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
-
-## join data
-viv_hog = left_join(hog,viv,by=c("COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
-table(is.na(viv_hog$VA1_ESTRATO))
-
-data = left_join(viv_hog,mgn,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
-table(is.na(data$VA1_ESTRATO))
-
-## select vars
-H_NRO_CUARTOS = "Número de cuartos en total"
-HA_TOT_PER = "Total personas en el hogar"
-V_TOT_HOG = "Total de hogares en la vivienda"
-VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
-COD_DANE_ANM = "Codigo DANE de manzana"
-
-db = data %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
-
-## summary data
-censo_bog = db %>%
-  group_by(COD_DANE_ANM) %>% 
-  summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
-            sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
-            med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
-            med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
-
-colnames (censo_bog)
-## export data
-export(censo_bog,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_bog.rds")
-
-
-## load data
-mgn_m = read_csv("CNPV2018_MGN_A2_05.CSV")
-colnames(mgn_m)
-distinct_all(mgn_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
-
-hog_m = read_csv("CNPV2018_2HOG_A2_05.CSV")
-colnames(hog_m)
-distinct_all(hog_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
-
-viv_m = read_csv("CNPV2018_1VIV_A2_05.CSV") 
-colnames(viv_m)
-distinct_all(viv_m[,c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
-
-## join data
-viv_hog_med = left_join(hog_m,viv_m,by=c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
-table(is.na(viv_hog_med$VA1_ESTRATO))
-
-data_med = left_join(viv_hog_med,mgn_m,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
-table(is.na(data$VA1_ESTRATO))
-
-
-#quitamos los municipios de antioquia que no sean medellin
-viv_hog_med2 <- viv_hog_med %>% subset(U_MPIO == "001")
-
-## select vars
-H_NRO_CUARTOS = "Número de cuartos en total"
-HA_TOT_PER = "Total personas en el hogar"
-V_TOT_HOG = "Total de hogares en la vivienda"
-VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
-COD_DANE_ANM = "Codigo DANE de manzana"
-
-db_med = data_med %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
-
-## summary data
-censo_med = db_med %>%
-  group_by(COD_DANE_ANM) %>% 
-  summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
-            sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
-            med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
-            med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
-
-
-export(censo_med,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_med.rds")
+# ## censo data
+# setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo")
+# 
+# 
+# ## load data
+# mgn = read_csv("CNPV2018_MGN_A2_11.CSV")
+# colnames(mgn)
+# distinct_all(mgn[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+# 
+# hog = read_csv("CNPV2018_2HOG_A2_11.CSV")
+# colnames(hog)
+# distinct_all(hog[,c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
+# 
+# viv = read_csv("CNPV2018_1VIV_A2_11.CSV") 
+# colnames(viv)
+# distinct_all(viv[,c("COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+# 
+# ## join data
+# viv_hog = left_join(hog,viv,by=c("COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
+# table(is.na(viv_hog$VA1_ESTRATO))
+# 
+# data = left_join(viv_hog,mgn,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
+# table(is.na(data$VA1_ESTRATO))
+# 
+# ## select vars
+# H_NRO_CUARTOS = "Número de cuartos en total"
+# HA_TOT_PER = "Total personas en el hogar"
+# V_TOT_HOG = "Total de hogares en la vivienda"
+# VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
+# COD_DANE_ANM = "Codigo DANE de manzana"
+# 
+# db = data %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
+# 
+# ## summary data
+# censo_bog = db %>%
+#   group_by(COD_DANE_ANM) %>% 
+#   summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
+#             sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
+#             med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
+#             med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
+# 
+# colnames (censo_bog)
+# ## export data
+# export(censo_bog,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_bog.rds")
+# 
+# 
+# ## load data
+# mgn_m = read_csv("CNPV2018_MGN_A2_05.CSV")
+# colnames(mgn_m)
+# distinct_all(mgn_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+# 
+# hog_m = read_csv("CNPV2018_2HOG_A2_05.CSV")
+# colnames(hog_m)
+# distinct_all(hog_m[,c("U_MPIO","UA_CLASE","COD_ENCUESTAS","U_VIVIENDA","H_NROHOG")]) %>% nrow()
+# 
+# viv_m = read_csv("CNPV2018_1VIV_A2_05.CSV") 
+# colnames(viv_m)
+# distinct_all(viv_m[,c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA")]) %>% nrow()
+# 
+# ## join data
+# viv_hog_med = left_join(hog_m,viv_m,by=c("U_MPIO","COD_ENCUESTAS","U_VIVIENDA","UA_CLASE"))
+# table(is.na(viv_hog_med$VA1_ESTRATO))
+# 
+# data_med = left_join(viv_hog_med,mgn_m,by=c("UA_CLASE","COD_ENCUESTAS","U_VIVIENDA"))
+# table(is.na(data$VA1_ESTRATO))
+# 
+# 
+# #quitamos los municipios de antioquia que no sean medellin
+# viv_hog_med2 <- viv_hog_med %>% subset(U_MPIO == "001")
+# 
+# ## select vars
+# H_NRO_CUARTOS = "Número de cuartos en total"
+# HA_TOT_PER = "Total personas en el hogar"
+# V_TOT_HOG = "Total de hogares en la vivienda"
+# VA1_ESTRATO = "Estrato de la vivienda (según servicio de energía)"
+# COD_DANE_ANM = "Codigo DANE de manzana"
+# 
+# db_med = data_med %>% select(COD_DANE_ANM,H_NRO_CUARTOS,HA_TOT_PER,V_TOT_HOG,VA1_ESTRATO)
+# 
+# ## summary data
+# censo_med = db_med %>%
+#   group_by(COD_DANE_ANM) %>% 
+#   summarise(med_H_NRO_CUARTOS=median(H_NRO_CUARTOS,na.rm=T), 
+#             sum_HA_TOT_PER=sum(HA_TOT_PER,na.rm=T), 
+#             med_V_TOT_HOG=median(V_TOT_HOG,na.rm=T),
+#             med_VA1_ESTRATO=median(VA1_ESTRATO,na.rm=T))
+# 
+# 
+# export(censo_med,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/censo_med.rds")
 
 ######################################################################################
 ######################################################################################
@@ -1980,12 +1993,12 @@ export(censo_med,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/ps3/censo/ce
 ######################################################################################
 #AQUI PUEDES CARGAR LAS QUE GUARDE CON LA INFORMACIÓN DEL CENSO 
 
-##############unir bases 
+##############traer info del censo
 
-setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
-#setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
+#setwd("C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina")
+setwd("C:/Users/Camila Cely/Documents/GitHub/ProblemSet3_Cely_Ospina")
 
-#traer las bases de train y de test
+#traer la info del censo ya procesada
 
 censo_bog<-readRDS("stores/censo_bog.Rds")     #194 obs
 censo_med<-readRDS("stores/censo_med.Rds")  #42512obs
@@ -2035,6 +2048,13 @@ tt_mde1 = tt_mde1 %>% group_by(MANZ_CCNCT) %>%
 table(is.na(tt_mde1$estrato)) #24 NAs
 
 export(tt_mde1,"C:/Users/SARA/Documents/ESPECIALIZACIÓN/BIG DATA/GITHUB/ProblemSet3_Cely_Ospina/stores/tt_mde1.rds")
+
+######################################################################################
+######################################################################################
+######################################################################################
+#AHORA HAY QUE UNIR NUEVAMENTE PARA OBTENER TT_BARRIOS DE NUEVO
+
+
 
 
 ######################################################################################
