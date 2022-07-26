@@ -2802,26 +2802,228 @@ ggplot(train_barrios, aes(x=sqrt(price)))+
 #voy a ir agregando los modelos
 
 
-######OLS#####
-modelo_ols<-lm(sqrt(price) ~ INCLUIR VARIABLES)
+##########################################
+#Modelo OLS
 
-stargazer(modelo_ols, type = "text")
-train_barrios$predict_lm<-(predict(modelo_ols, newdata = train_barrios))^2
-summary(train_barrios$predict_lm)
+#para barrios
+colnames(train_barrios)
+modelo_ols_barrios<-lm(sqrt(price) ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
+                         dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
+                         cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
+                         penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto,
+                       data=train_barrios)
 
-mse_modelo_ols <- mean((train_barrios$predict_lm - train_barrios$price)^2)
+stargazer(modelo_ols_barrios, type = "text")
+train_barrios$predict_lm<-(predict(modelo_ols_barrios, newdata = train_barrios))^2
+summary(modelo_ols_barrios$predict_lm)
+
+#MSE de entrenamiento
+mse_modelo_ols_b <- mean((train_barrios$predict_lm - train_barrios$price)^2)
+paste("Error (MSE) de ols-barrios:", mse_modelo_ols_b)
 
 
-######Lasso#####
-###entrenamiento y test
-m_barrios<-as.data.frame(cbind(VARIABLES))
-colnames(m_barrios)<-c("VARIABLES")
+#para total
+modelo_ols_total<-lm(sqrt(price) ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + hw_more + cbd_more + balcon + 
+                       renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto, data=train_total)
+
+stargazer(modelo_ols_total, type = "text")
+train_total$predict_lm<-(predict(modelo_ols_total, newdata = train_total))^2
+summary(train_total$predict_lm)
+
+#MSE de entrenamiento
+mse_modelo_ols_t <- mean((train_total$predict_lm - train_total$price)^2)
+
+
+
+###matrices de entrenamiento y test para correr Lasso y Ridge
+m_barrios<-as.data.frame(cbind(
+  
+  cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
+                                 dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
+                                 cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
+                                 penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto))
+colnames(m_barrios)<-c("cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
+                         dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
+                         cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
+                         penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto")
 
 m_barrios<- as.data.frame(scale(m_barrios, center = TRUE, scale = TRUE))
 
-x_train_lasso <- model.matrix("variables", data = m_barrios)[, -1]
+x_train <- model.matrix(price ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
+                                cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
+                                cbd_more + oriente_more+penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + 
+                                nivel + apto, data=train_barrios)[, -1]
 
-y_train_lasso <- m_barrios$price
+y_train <- train_barrios$price
+
+
+##########################################
+#Modelo lasso
+
+modelo_lasso1 <- glmnet(
+  x           = x_train,
+  y           = y_train,
+  alpha       = 1,
+  nlambda     = 100,
+  standardize = TRUE
+)
+
+# los coef en función de lambda
+regularizacion_lasso1 <- modelo_lasso1$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_lasso1$lambda)
+
+regularizacion_lasso1 <- regularizacion_lasso1 %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+
+regularizacion_lasso1 %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = trans_breaks("log10", function(x) 10^x),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes en función de la regularización") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#MSE en funcion de lambda 
+set.seed(123)
+cv_error_lasso1 <- cv.glmnet(
+  x      = x_train,
+  y      = y_train,
+  alpha  = 1,
+  nfolds = 10,
+  type.measure = "mse",
+  standardize  = TRUE
+)
+
+plot(cv_error_lasso1)
+
+
+#Mejor lambda a una desviacion estandar 
+paste("Mejor valor de lambda encontrado + 1 desviación estándar:", cv_error_lasso1$lambda.1se)
+
+
+#Estimacion de modelo con lambda optimo 
+modelo_lasso1_opt <- glmnet(
+  x           = x_train,
+  y           = y_train,
+  alpha       = 1,
+  lambda      = cv_error_lasso1$lambda.1se,
+  standardize = TRUE
+)
+
+
+# Coeficientes del modelo
+df_coef_lasso1 <- coef(modelo_lasso1_opt) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "predictor") %>%
+  rename(coeficiente = s0)
+
+df_coef_lasso1 %>%
+  filter(
+    predictor != "(Intercept)",
+    coeficiente != 0
+  ) 
+
+# Predicciones de entrenamiento Lasso
+predicciones_train_lasso1 <- predict(modelo_lasso1_opt, newx = x_train)
+
+# MSE
+mse_modelo_lasso <- mean((predicciones_train_lasso - y_train)^2)
+paste("Error (mse) de lasso:", mse_modelo_lasso)
+
+##########################################
+#Modelo Ridge
+
+modelo_ridge1 <- glmnet(
+  x           = x_train,
+  y           = y_train,
+  alpha       = 0,
+  nlambda     = 100,
+  standardize = TRUE
+)
+
+
+# los coef en función de lambda
+regularizacion_ridge1 <- modelo_ridge1$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_ridge1$lambda)
+
+regularizacion_ridge1 <- regularizacion_ridge1 %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+
+regularizacion_ridge1 %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = trans_breaks("log10", function(x) 10^x),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes en función de la regularización") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#MSE en funcion de lambda 
+set.seed(123)
+cv_error_ridge1 <- cv.glmnet(
+  x      = x_train,
+  y      = y_train,
+  alpha  = 1,
+  nfolds = 10,
+  type.measure = "mse",
+  standardize  = TRUE
+)
+
+plot(cv_error_ridge1)
+
+
+#Mejor lambda a una desviacion estandar 
+paste("Mejor valor de lambda encontrado + 1 desviación estándar:", cv_error_ridge1$lambda.1se)
+
+
+#Estimacion de modelo con lambda optimo 
+modelo_ridge1_opt <- glmnet(
+  x           = x_train,
+  y           = y_train,
+  alpha       = 0,
+  lambda      = cv_error_ridge1$lambda.1se,
+  standardize = TRUE
+)
+
+
+# Coeficientes del modelo
+df_coef_ridge1 <- coef(modelo_ridge1_opt) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "predictor") %>%
+  rename(coeficiente = s0)
+
+df_coef_ridge1 %>%
+  filter(
+    predictor != "(Intercept)",
+    coeficiente != 0
+  ) 
+
+# Predicciones de entrenamiento Lasso
+predicciones_train_ridge1 <- predict(modelo_ridge1_opt, newx = x_train)
+
+# MSE
+mse_modelo_lasso <- mean((predicciones_train_lasso - y_train)^2)
+paste("Error (mse) de lasso:", mse_modelo_lasso)
+
 
 
 
