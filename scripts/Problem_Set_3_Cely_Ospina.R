@@ -3422,6 +3422,62 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=tt_mapa_pobl, color= colorcp,
 
 
 
+##quiero sacar un mapa del numero de habitaciones porque random forest insinua que a MENOR numero de habitaciones (bedrooms) mayor precio 
+# de ser asi esto daria cuenta de un tipo de hogar que valora mas vivir en chapinero y poblado (unipersonal o pareja) -- toca hacerlo en chapinero porque en poblado no se pueden plotear los precios
+
+
+summary (train_barrios_ch$bedrooms)
+
+colorcr <- rep(NA, nrow(train_barrios_ch))
+
+colorcr[train_barrios_ch$bed_0 == 1] <- "#F2F7FF"   
+colorcr[train_barrios_ch$bed_1 == 1] <- "#F2F7FF"
+colorcr[train_barrios_ch$bed_2 == 1] <- "#F2F7FF"
+colorcr[train_barrios_ch$bed_3 == 1] <- "#9D71E8"
+colorcr[train_barrios_ch$bed_more == 1] <- "#9D71E8"  #lilas, el mas oscuro es el mas numero de habitaciones
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorcr, fillOpacity=1 , opacity=1, radius=1) ##desafortunadamente no nos sirve para nada porque la distribucion es aleatoria en el espacio (debe ser como que en el mismo edificio hay aptos de distinto num de hab por ejemplo)
+
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+################################
+###   XGBoost (prueba  ########
+
+ctrl<- trainControl(method = "cv", 
+                    number = 5,
+                    summaryFunction = fiveStats,  
+                    classProbs = TRUE,
+                    verbose = FALSE,
+                    savePredictions = T)
+
+
+
+grid_default <- expand.grid(nrounds = 250,
+                            max_depth = 2,
+                            eta = 0.5 , #tasa a la cual aprende, entre menor mas se demora
+                            gamma = c(0,1),
+                            min_child_weight = 25,
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+set.seed(123)
+
+xgboost <- train(
+  price ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_theatre + dist_university + dist_park + dist_playground +
+    dist_cbd + oriente + penthouse + balcon + renov + vista + ascen + parq + bathrooms + area + estrato + apto, 
+  data = train_barrios, 
+  method = "xgbTree",
+  trControl = ctrl,
+  metric = "Sens",
+  tuneGrid = grid_default,
+  preProcess = c("center", "scale")
+)
+
+
 
 
 
