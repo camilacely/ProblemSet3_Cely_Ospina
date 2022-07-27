@@ -2387,6 +2387,8 @@ ggplot(train_barrios, aes(x=area)) +
 
 table(is.na(train_barrios$bathrooms)) #sin NAs
 
+class(train_barrios$bathrooms)
+
 ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
@@ -2397,6 +2399,10 @@ train_barrios<- train_barrios %>%
 
 ggplot(train_barrios, aes(x=bathrooms)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
+
+#para que no quede con valores de 3.5
+
+
 
 
 ########
@@ -2442,7 +2448,7 @@ table(is.na(train_barrios$price)) #sin NAs
 ggplot(train_barrios, aes(x=price)) +
   geom_boxplot(fill= "tomato", alpha=0.4)
 
-######### train_barrios queda de 16036 obs
+######### train_barrios queda de 16371 obs
 
 
 ###############################################
@@ -2660,7 +2666,7 @@ table(is.na(test_barrios$price)) #TODOS SON NAS PRECISAMENTE PORQUE ES TEST
 
 test_total <- test_barrios
 
-######### test_barrios queda de 11150 obs
+######### test_total queda de 11150 obs
 
 
 
@@ -2670,6 +2676,10 @@ test_total <- test_barrios
 ######################################################################################
 
 #######################     RANDOM FOREST      #######################################
+
+
+##Nota: por motivos del tiempo e intensidad computacional que el random forest requiere, lo utilizamos como una manera de entender las variables que mas peso tienen, pero no como modelo predictivo
+####################################################################################################################################################################################################
 
 
 #Intuicion= con las variables que hemos identificado vamos a correr un random forest para identificar las mas relevantes
@@ -2782,13 +2792,15 @@ forest <- train(
   price_more_f ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
     cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + cbd_more + oriente_more +
     penthouse + balcon + renov + vista + ascen + extras + parq,
-  data = train_barrios,
+  data = train_barrios, #notar que este es en el subset de los barrios de interes (hay mas variables)
   method = "rf",
   trControl = ctrl,
   family = "binomial",
   metric="Sens",)
 
 varImp(forest,scale=TRUE)
+
+
 
 #only 20 most important variables shown (out of 27)
 
@@ -2875,6 +2887,11 @@ varImp(forest_t,scale=TRUE)
 #bed_0          0.0000
 
 
+
+#de lo anterior tomamos las variables mas relevantes tanto para el analisis mas profundo como para el resto de modelos de regresion
+
+
+
 ######################################################################################
 ######################################################################################
 ######################################################################################
@@ -2890,19 +2907,21 @@ varImp(forest_t,scale=TRUE)
 train_barrios_df <- train_barrios %>% st_drop_geometry()
 
 train_barrios_df %>%
-  select(l3, price, property_type, area, dist_bus, dist_playground, dist_highway, dist_cbd, bedrooms, bathrooms, balcon, extras, ascen, parq, renov) %>% #complementar porque en mi version aun tiene unos NAs
+  select(l3, price, property_type, area, dist_bus, dist_playground, dist_highway, dist_cbd, bedrooms, bathrooms, balcon, extras, ascen, parq, renov, estrato) %>% #complementar porque en mi version aun tiene unos NAs
   tbl_summary(by=l3)
-#pendiente ajustar y plotear
 
-train_total_df <- train_total %>% st_drop_geometry()
 
 ######
 #TABLA 2 (totalidad de las ciudades)
+
+train_total_df <- train_total %>% st_drop_geometry()
+
 train_total_df %>%
   select(l3, price, property_type, area, dist_highway_ciudades, dist_cbd_ciudades) %>% 
   tbl_summary(by=l3)
 
 colnames(train_total_df)
+
 #pendiente ajustar y plotear
 
 
@@ -2914,11 +2933,11 @@ colnames(train_total_df)
 
 
 ##########
-#chapinero
+#chapinero precio metro 2
 
 #voy a subsetear tt_barrios, es importante hacerlo despues de todas las transformaciones ####
 
-train_barrios_ch <- tt_barrios %>% subset(test == 0) #primero saco las de test
+train_barrios_ch <- train_barrios
 train_barrios_ch <- train_barrios_ch %>% subset(cundinamarca == 1) #aqui si saco solo las de chapinero
 
 
@@ -2935,7 +2954,7 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch , color="red
 train_barrios_ch <- train_barrios_ch %>% 
   mutate(preciomet2 = (price / area) )
 
-summary (train_barrios_ch$preciomet2) #aun tiene NAs porque no he terminado de limpiar base, ver con Sara
+summary (train_barrios_ch$preciomet2) 
 
 
 #luego la voy a dividir como en quintiles
@@ -2956,7 +2975,7 @@ lower_bound_p5<-0.8
 upper_bound_p5<-1
 
 
-upper_bound_precio1 <- quantile(train_barrios_ch$preciomet2, upper_bound_p1, na.rm=T)  #correr cuando ya esten eliminados los outliers #IMPORTANTE NO ELIMINARLOS EN TEST
+upper_bound_precio1 <- quantile(train_barrios_ch$preciomet2, upper_bound_p1, na.rm=T)  
 upper_bound_precio1 
 
 upper_bound_precio2 <- quantile(train_barrios_ch$preciomet2, upper_bound_p2, na.rm=T)  
@@ -3006,7 +3025,7 @@ color[train_barrios_ch$precio2 == 1] <- "#0582CA"
 color[train_barrios_ch$precio3 == 1] <- "#006494"
 color[train_barrios_ch$precio4 == 1] <- "#003554"
 color[train_barrios_ch$precio5 == 1] <- "#051923"      #azules, el mas oscuro es el mas caro
-color[is.na(train_barrios_ch$preciomet2)] <- "#FFFFFF"
+#color[is.na(train_barrios_ch$preciomet2)] <- "#FFFFFF" #no la corro porque en este caso no hay NAs
 
 
 ###AQUI ME SALE EL MAPA DE PRECIO POR M2
@@ -3015,9 +3034,111 @@ leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colo
 leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= color, fillOpacity=1 , opacity=1, radius=1) %>% addCircleMarkers(data=bus_chap, color="red", radius=2)
 
 
+##########
+#poblado precio metro 2
+
+train_barrios_po <- train_barrios
+train_barrios_po <- train_barrios_po %>% subset(cundinamarca == 0) #aqui si saco solo las de poblado
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_po , color="red") #NOTAR que cuando tomamos solo train no hay ni una obs dentro del poblado como tal (todas son de test)
+
+
+#como voy a comparar precio con distancia a sistema de transporte, hay que codificar ambas variables
+
+
+##como comparar el precio "puro" no es justo, lo voy a hacer por m2
+
+#creo la variable
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(preciomet2 = (price / area) )
+
+summary (train_barrios_po$preciomet2) 
+
+
+#luego la voy a dividir como en quintiles
+
+lower_bound_p1<-0
+upper_bound_p1<-0.2
+
+lower_bound_p2<-0.2
+upper_bound_p2<-0.4
+
+lower_bound_p3<-0.4
+upper_bound_p3<-0.6
+
+lower_bound_p4<-0.6
+upper_bound_p4<-0.8
+
+lower_bound_p5<-0.8
+upper_bound_p5<-1
+
+
+upper_bound_precio1 <- quantile(train_barrios_po$preciomet2, upper_bound_p1, na.rm=T)  
+upper_bound_precio1 
+
+upper_bound_precio2 <- quantile(train_barrios_po$preciomet2, upper_bound_p2, na.rm=T)  
+upper_bound_precio2 
+
+upper_bound_precio3 <- quantile(train_barrios_po$preciomet2, upper_bound_p3, na.rm=T)  
+upper_bound_precio3
+
+upper_bound_precio4 <- quantile(train_barrios_po$preciomet2, upper_bound_p4, na.rm=T)  
+upper_bound_precio4
+
+upper_bound_precio5 <- quantile(train_barrios_po$preciomet2, upper_bound_p5, na.rm=T)  
+upper_bound_precio5
+
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio1 = if_else( preciomet2 <= upper_bound_precio1, 1, 0))
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio2 = if_else( preciomet2 <= upper_bound_precio2, 1, 0))
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio2 = if_else( preciomet2 > upper_bound_precio1, 1, 0))
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio3 = if_else( preciomet2 <= upper_bound_precio3, 1, 0))
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio3 = if_else( preciomet2 > upper_bound_precio2, 1, 0))
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio4 = if_else( preciomet2 <= upper_bound_precio4, 1, 0))
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio4 = if_else( preciomet2 > upper_bound_precio3, 1, 0))
+
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio5= if_else( preciomet2 <= upper_bound_precio5, 1, 0))
+train_barrios_po <- train_barrios_po %>% 
+  mutate(precio5 = if_else( preciomet2 > upper_bound_precio4, 1, 0))
+
+
+
+#ahora le puedo asignar colores por quintiles
+
+color <- rep(NA, nrow(train_barrios_ch))
+
+color[train_barrios_po$precio1 == 1] <- "#00A6FB"   
+color[train_barrios_po$precio2 == 1] <- "#0582CA"
+color[train_barrios_po$precio3 == 1] <- "#006494"
+color[train_barrios_po$precio4 == 1] <- "#003554"
+color[train_barrios_po$precio5 == 1] <- "#051923"      #azules, el mas oscuro es el mas caro
+#color[is.na(train_barrios_ch$preciomet2)] <- "#FFFFFF" #no la corro porque en este caso no hay NAs
+
+
+###AQUI ME SALE EL MAPA DE PRECIO POR M2
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_po, color= color, fillOpacity=1 , opacity=1, radius=1) 
+#AQUI TRAE LOS PUNTOS DE ESTACION DE BUS
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_po, color= color, fillOpacity=1 , opacity=1, radius=1) %>% addCircleMarkers(data=bus_pobl, color="red", radius=2)
+
+#SALE COMPLETAMENTE HORRIBLE PORQUE HAY MUY POCAS OBSERVACIONES EN TRAIN
+
+
 
 ###
-#ahora voy a hacer lo mismo pero con "distancia a estacion de bus" y la idea es ver si los dos mapas se comportan parecido
+#ahora voy a hacer lo mismo pero con "distancia a bus" y la idea es ver si los dos mapas se comportan parecido  ###no lo voy a usar porque no nos dice tanto como y creia
 
 
 summary (train_barrios_ch$dist_bus)
@@ -3029,7 +3150,7 @@ upper_bound_b4<-0.8
 upper_bound_b5<-1
 
 
-upper_bound_bus1 <- quantile(train_barrios_ch$dist_bus, upper_bound_b1, na.rm=T)  #correr cuando ya esten eliminados los outliers #IMPORTANTE NO ELIMINARLOS EN TEST
+upper_bound_bus1 <- quantile(train_barrios_ch$dist_bus, upper_bound_b1, na.rm=T)  
 upper_bound_bus1 
 
 upper_bound_bus2 <- quantile(train_barrios_ch$dist_bus, upper_bound_b2, na.rm=T)  
@@ -3082,6 +3203,224 @@ colorb[train_barrios_ch$bus5 == 1] <- "#134611"  #verdes, el mas oscuro es el ma
 
 
 leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorb, fillOpacity=1 , opacity=1, radius=1) 
+
+
+###
+#ahora voy a hacer lo mismo pero con "distancia a playground" 
+
+
+summary (train_barrios_ch$dist_playground)
+
+upper_bound_g1<-0.2
+upper_bound_g2<-0.4
+upper_bound_g3<-0.6
+upper_bound_g4<-0.8
+upper_bound_g5<-1
+
+
+upper_bound_pg1 <- quantile(train_barrios_ch$dist_playground, upper_bound_g1, na.rm=T)  
+upper_bound_pg1 
+
+upper_bound_pg2 <- quantile(train_barrios_ch$dist_playground, upper_bound_g2, na.rm=T)  
+upper_bound_pg2 
+
+upper_bound_pg3 <- quantile(train_barrios_ch$dist_playground, upper_bound_g3, na.rm=T)  
+upper_bound_pg3
+
+upper_bound_pg4 <- quantile(train_barrios_ch$dist_playground, upper_bound_g4, na.rm=T)  
+upper_bound_pg4
+
+upper_bound_pg5 <- quantile(train_barrios_ch$dist_playground, upper_bound_g5, na.rm=T)  
+upper_bound_pg5
+
+
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg1 = if_else( dist_playground <= upper_bound_pg1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg2 = if_else( dist_playground <= upper_bound_pg2, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg2 = if_else( dist_playground > upper_bound_pg1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg3 = if_else( dist_playground <= upper_bound_pg3, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg3 = if_else( dist_playground > upper_bound_pg2, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg4 = if_else( dist_playground <= upper_bound_pg4, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg4 = if_else( dist_playground > upper_bound_pg3, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg5= if_else( dist_playground <= upper_bound_pg5, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(pg5 = if_else( dist_playground > upper_bound_pg4, 1, 0))
+
+
+
+
+colorpg <- rep(NA, nrow(train_barrios_ch))
+
+colorpg[train_barrios_ch$pg1 == 1] <- "#E8FCCF"   
+colorpg[train_barrios_ch$pg2 == 1] <- "#96E072"
+colorpg[train_barrios_ch$pg3 == 1] <- "#3DA35D"
+colorpg[train_barrios_ch$pg4 == 1] <- "#3E8914"
+colorpg[train_barrios_ch$pg5 == 1] <- "#134611"  #verdes, el mas oscuro es el mas lejos del playground
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorpg, fillOpacity=1 , opacity=1, radius=1) 
+
+
+###
+#ahora voy a hacer lo mismo pero con "distancia a cbd" (version subset) ###chapinero
+
+
+summary (train_barrios_ch$dist_cbd)
+
+upper_bound_c1<-0.2  #lo voy a dejar igualito porque no le voy a cambiar los valores 
+upper_bound_c2<-0.4
+upper_bound_c3<-0.6
+upper_bound_c4<-0.8
+upper_bound_c5<-1
+
+
+upper_bound_c1 <- quantile(train_barrios_ch$dist_cbd, upper_bound_c1, na.rm=T)  
+upper_bound_c1 
+
+upper_bound_c2 <- quantile(train_barrios_ch$dist_cbd, upper_bound_c2, na.rm=T)  
+upper_bound_c2 
+
+upper_bound_c3 <- quantile(train_barrios_ch$dist_cbd, upper_bound_c3, na.rm=T)  
+upper_bound_c3
+
+upper_bound_c4 <- quantile(train_barrios_ch$dist_cbd, upper_bound_c4, na.rm=T)  
+upper_bound_c4
+
+upper_bound_c5 <- quantile(train_barrios_ch$dist_cbd, upper_bound_c5, na.rm=T)  
+upper_bound_c5
+
+
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c1 = if_else( dist_cbd <= upper_bound_c1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c2 = if_else( dist_cbd <= upper_bound_c2, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c2 = if_else( dist_cbd > upper_bound_c1, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c3 = if_else( dist_cbd <= upper_bound_c3, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c3 = if_else( dist_cbd > upper_bound_c2, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c4 = if_else( dist_cbd <= upper_bound_c4, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c4 = if_else( dist_cbd > upper_bound_c3, 1, 0))
+
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c5= if_else( dist_cbd <= upper_bound_c5, 1, 0))
+train_barrios_ch <- train_barrios_ch %>% 
+  mutate(c5 = if_else( dist_cbd > upper_bound_c4, 1, 0))
+
+
+
+
+colorc <- rep(NA, nrow(train_barrios_ch))
+
+colorc[train_barrios_ch$c1 == 1] <- "#F7B267"   
+colorc[train_barrios_ch$c2 == 1] <- "#F79D65"
+colorc[train_barrios_ch$c3 == 1] <- "#F4845F"
+colorc[train_barrios_ch$c4 == 1] <- "#F27059"
+colorc[train_barrios_ch$c5 == 1] <- "#F25C54"  #naranjas, el mas oscuro es el mas lejos del cbd
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=train_barrios_ch, color= colorc, fillOpacity=1 , opacity=1, radius=1) 
+
+
+
+###
+#ahora voy a hacer lo mismo pero con "distancia a cbd" (version subset) ###poblado
+
+#nota: hay que hacerlo con train y test porque si no, no se ve bien
+#entonces toca hacer un arrejunte solo para este mapa
+
+#voy a duplicar la base de antes de que la dividieramos (tt_barrios) #no va a tener algunas modificaciones de NAs etc pero esta variable que me interesa si viene completa 
+
+tt_mapa_pobl <- tt_barrios
+
+tt_mapa_pobl <- tt_mapa_pobl %>% subset(cundinamarca == 0)
+
+
+summary (tt_mapa_pobl$dist_cbd)
+
+
+upper_bound_cp1<-0.2  #lo voy a dejar igualito porque no le voy a cambiar los valores 
+upper_bound_cp2<-0.4
+upper_bound_cp3<-0.6
+upper_bound_cp4<-0.8
+upper_bound_cp5<-1
+
+
+upper_bound_cp1 <- quantile(tt_mapa_pobl$dist_cbd, upper_bound_cp1, na.rm=T)  
+upper_bound_cp1 
+
+upper_bound_cp2 <- quantile(tt_mapa_pobl$dist_cbd, upper_bound_cp2, na.rm=T)  
+upper_bound_cp2 
+
+upper_bound_cp3 <- quantile(tt_mapa_pobl$dist_cbd, upper_bound_cp3, na.rm=T)  
+upper_bound_cp3
+
+upper_bound_cp4 <- quantile(tt_mapa_pobl$dist_cbd, upper_bound_cp4, na.rm=T)  
+upper_bound_cp4
+
+upper_bound_cp5 <- quantile(tt_mapa_pobl$dist_cbd, upper_bound_cp5, na.rm=T)  
+upper_bound_cp5
+
+
+
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp1 = if_else( dist_cbd <= upper_bound_cp1, 1, 0))
+
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp2 = if_else( dist_cbd <= upper_bound_cp2, 1, 0))
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp2 = if_else( dist_cbd > upper_bound_cp1, 1, 0))
+
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp3 = if_else( dist_cbd <= upper_bound_cp3, 1, 0))
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp3 = if_else( dist_cbd > upper_bound_cp2, 1, 0))
+
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp4 = if_else( dist_cbd <= upper_bound_cp4, 1, 0))
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp4 = if_else( dist_cbd > upper_bound_cp3, 1, 0))
+
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp5= if_else( dist_cbd <= upper_bound_cp5, 1, 0))
+tt_mapa_pobl <- tt_mapa_pobl %>% 
+  mutate(cp5 = if_else( dist_cbd > upper_bound_cp4, 1, 0))
+
+
+
+
+colorcp <- rep(NA, nrow(train_barrios_ch))
+
+colorcp[tt_mapa_pobl$cp1 == 1] <- "#F7B267"   
+colorcp[tt_mapa_pobl$cp2 == 1] <- "#F79D65"
+colorcp[tt_mapa_pobl$cp3 == 1] <- "#F4845F"
+colorcp[tt_mapa_pobl$cp4 == 1] <- "#F27059"
+colorcp[tt_mapa_pobl$cp5 == 1] <- "#F25C54"  #naranjas, el mas oscuro es el mas lejos del cbd
+
+
+leaflet() %>% addTiles() %>% addCircleMarkers(data=tt_mapa_pobl, color= colorcp, fillOpacity=1 , opacity=1, radius=1) 
+
+
+
 
 
 
