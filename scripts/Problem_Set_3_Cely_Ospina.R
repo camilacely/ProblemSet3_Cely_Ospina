@@ -3098,69 +3098,165 @@ ggplot(train_barrios, aes(x=log(price)))+
   geom_histogram(fill="darkblue", alpha = 0.4)
 
 ggplot(train_barrios, aes(x=sqrt(price)))+
-  geom_histogram(fill="darkblue", alpha = 0.4)
+  geom_histogram(fill="darkblue", alpha = 0.4) ####esta es la que se comporta con mayor normalidad
 
-
-#voy a ir agregando los modelos
-
-
+#MODELOS DE PREDICCION
 ##########################################
-#Modelo OLS
+colnames(train_barrios)
+
+#separamos entre test y train con 70-30
+
 
 #para barrios
-colnames(train_barrios)
-modelo_ols_barrios<-lm(sqrt(price) ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
-                         dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
-                         cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
-                         penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto,
-                       data=train_barrios)
+set.seed(123)
+split1<-createDataPartition(train_barrios$price, p = .7)[[1]]
+length(split1)
 
+test_barriosf<-train_barrios[-split1,]
+train_barriosf <-train_barrios[split1,]
+
+#para total 
+
+set.seed(123)
+split1<-createDataPartition(train_total$price, p = .7)[[1]]
+length(split1)
+
+train_totalf<-train_total[-split1,]
+test_totalf <-test_total[split1,]
+
+##########################################
+intersect(names(train_barrios), names(test_barrios))
+#[1] "property_id"       "ad_type"           "start_date"        "end_date"          "created_on"        "l1"                "l2"               
+#[8] "l3"                "rooms"             "bedrooms"          "bathrooms"         "surface_total"     "surface_covered"   "price"            
+#[15] "currency"          "title"             "description"       "property_type"     "operation_type"    "test"              "area_total"       
+#[22] "area_cubierta"     "area"              "geometry"          "dist_bar"          "dist_bus"          "dist_cafe"         "dist_cinema"      
+#[29] "dist_hospital"     "dist_restaurant"   "dist_school"       "dist_theatre"      "dist_university"   "dist_park"         "dist_playground"  
+#[36] "dist_highway"      "dist_cbd"          "lon"               "oriente"           "titlemin"          "descriptionmin"    "nivel"            
+#[43] "piso"              "penthouse"         "balcon"            "renov"             "vista"             "ascen"             "extras"           
+#[50] "parq"              "bar_more"          "bus_more"          "cafe_more"         "cine_more"         "hosp_more"         "rest_more"        
+#[57] "school_more"       "theatre_more"      "univ_more"         "park_more"         "play_more"         "hw_more"           "cbd_more"         
+#[64] "oriente_more"      "bath_more"         "cundinamarca"      "bed_0"             "bed_1"             "bed_2"             "bed_3"            
+#[71] "bed_more"          "area_more"         "estrato"           "apto"              "DPTO_CCDGO"        "MPIO_CCDGO"        "CLAS_CCDGO"       
+#[78] "SETR_CCDGO"        "SECR_CCDGO"        "CPOB_CCDGO"        "SETU_CCDGO"        "SECU_CCDGO"        "MANZ_CCDGO"        "MANZ_CCNCT"       
+#[85] "MANZ_CAG"          "Shape_Leng"        "Shape_Area"        "area_m"            "bathrooms_m"       "nivel_m"           "estrato_m"        
+#[92] "med_H_NRO_CUARTOS" "sum_HA_TOT_PER"    "med_V_TOT_HOG"     "med_VA1_ESTRATO"   "niv_med"          
+ 
+
+#Modelo OLS
+#para barrios
+modelo_ols_barrios<-lm(sqrt(price) ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                         dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                         penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto,
+                       data=train_barriosf)
+
+summary(modelo_ols_barrios) #R cuadrado 0.56
 stargazer(modelo_ols_barrios, type = "text")
-train_barrios$predict_lm<-(predict(modelo_ols_barrios, newdata = train_barrios))^2
-summary(modelo_ols_barrios$predict_lm)
+
+train_barriosf$predict_lm<-(predict(modelo_ols_barrios, newdata = train_barriosf))^2
+summary(train_barriosf$predict_lm)
 
 #MSE de entrenamiento
-mse_modelo_ols_b <- mean((train_barrios$predict_lm - train_barrios$price)^2)
+mse_modelo_ols_b <- mean((train_barriosf$predict_lm - train_barriosf$price)^2)
 paste("Error (MSE) de ols-barrios:", mse_modelo_ols_b)
+#[1] "Error (MSE) de ols-barrios: 405922840585320512"
+
+#MSE de test 
+test_barriosf$predict_lm<-(predict(modelo_ols_barrios, newdata = test_barriosf))^2
+summary(test_barriosf$predict_lm)
+
+mse_modelo_ols_test <- mean((test_barriosf$predict_lm - test_barriosf$price)^2)
+paste("Error (MSE) de ols-barrios:", mse_modelo_ols_test)
+#[1] "Error (MSE) de ols-barrios: 402074101888162624" #test 30%
 
 
 #para total
-modelo_ols_total<-lm(sqrt(price) ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + hw_more + cbd_more + balcon + 
-                       renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto, data=train_total)
+modelo_ols_total<-lm(sqrt(price) ~ cundinamarca + bedrooms + cbd_more + balcon + 
+                       renov + vista + ascen +  parq + bathrooms + area + estrato + apto, 
+                     data=train_totalf)
 
+summary(modelo_ols_total) #R cuadrado 0.47
 stargazer(modelo_ols_total, type = "text")
-train_total$predict_lm<-(predict(modelo_ols_total, newdata = train_total))^2
-summary(train_total$predict_lm)
+
+
+train_totalf$predict_lm<-(predict(modelo_ols_total, newdata = train_totalf))^2
+summary(train_totalf$predict_lm)
 
 #MSE de entrenamiento
-mse_modelo_ols_t <- mean((train_total$predict_lm - train_total$price)^2)
+mse_modelo_ols_testt <- mean((train_totalf$predict_lm - train_totalf$price)^2)
+paste("Error (MSE) de ols-barrios:", mse_modelo_ols_testt)
+#[1] "Error (MSE) de ols-barrios: 269096076565136160"
 
+
+#MSE de test 
+test_totalf$predict_lm<-(predict(mse_modelo_ols_testt, newdata = test_totalf))^2
+summary(test_barriosf$predict_lm)
+
+mse_modelo_ols_t <- mean((test_barriosf$predict_lm - test_barriosf$price)^2)
+paste("Error (MSE) de ols-barrios:", mse_modelo_ols_t)
+#[1] "Error (MSE) de ols-barrios: 402074101888162624"
+
+#Barrios tiene un mejor R cuadrado que total, por lo cual continuamos usando esa base
 
 
 ###matrices de entrenamiento y test para correr Lasso y Ridge
-m_barrios<-as.data.frame(cbind(
-  
-  cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
-                                 dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
-                                 cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
-                                 penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto))
-colnames(m_barrios)<-c("cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + dist_restaurant + 
-                         dist_school + dist_theatre + dist_university + dist_park + dist_playground + dist_highway + dist_cbd + oriente + 
-                         cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
-                         penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + nivel + apto")
+m_barrios<-as.data.frame(cbind(train_barriosf$price,train_barriosf$cundinamarca,
+                               train_barriosf$bedrooms, train_barriosf$dist_bus,
+                               train_barriosf$dist_cafe, train_barriosf$dist_cinema,
+                               train_barriosf$dist_hospital, train_barriosf$dist_theatre,
+                               train_barriosf$dist_university,train_barriosf$dist_park,
+                               train_barriosf$dist_playground,train_barriosf$dist_cbd,
+                               train_barriosf$oriente,train_barriosf$penthouse,
+                               train_barriosf$balcon,train_barriosf$renov,
+                               train_barriosf$vista,train_barriosf$ascen,
+                               train_barriosf$parq,train_barriosf$bathrooms,
+                               train_barriosf$area,train_barriosf$estrato,
+                               train_barriosf$apto))
+colnames(m_barrios)<-c("price", "cundinamarca" , "bedrooms" , "dist_bus" , "dist_cafe" , "dist_cinema" , "dist_hospital" , 
+                         "dist_theatre" , "dist_university" , "dist_park", "dist_playground" , "dist_cbd" , "oriente" , 
+                         "penthouse" , "balcon" , "renov" , "vista" , "ascen" ,  "parq" , "bathrooms" , "area" , "estrato" , "apto")
+
+m_barrios_t<-as.data.frame(cbind(test_barriosf$price,test_barriosf$cundinamarca,
+                                 test_barriosf$bedrooms, test_barriosf$dist_bus,
+                               test_barriosf$dist_cafe, test_barriosf$dist_cinema,
+                               test_barriosf$dist_hospital, test_barriosf$dist_theatre,
+                               test_barriosf$dist_university,test_barriosf$dist_park,
+                               test_barriosf$dist_playground,test_barriosf$dist_cbd,
+                               test_barriosf$oriente,test_barriosf$penthouse,
+                               test_barriosf$balcon,test_barriosf$renov,
+                               test_barriosf$vista,test_barriosf$ascen,
+                               test_barriosf$parq,test_barriosf$bathrooms,
+                               test_barriosf$area,test_barriosf$estrato,
+                               test_barriosf$apto))
+colnames(m_barrios_t)<-c("price", "cundinamarca" , "bedrooms" , "dist_bus" , "dist_cafe" , "dist_cinema" , "dist_hospital" , 
+                       "dist_theatre" , "dist_university" , "dist_park", "dist_playground" , "dist_cbd" , "oriente" , 
+                       "penthouse" , "balcon" , "renov" , "vista" , "ascen" ,  "parq" , "bathrooms" , "area" , "estrato" , "apto")
+
+
 
 m_barrios<- as.data.frame(scale(m_barrios, center = TRUE, scale = TRUE))
 
-x_train <- model.matrix(price ~ cundinamarca + bed_0 + bed_1 + bed_2 + bed_3 + bed_more + bar_more + bus_more + cafe_more + 
-                                cine_more + hosp_more + rest_more + school_more + theatre_more + univ_more + park_more + play_more + hw_more + 
-                                cbd_more + oriente_more+penthouse + balcon + renov + vista + ascen + extras + parq + bathrooms + area + estrato + 
-                                nivel + apto, data=train_barrios)[, -1]
+x_train <- model.matrix(price ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                          dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                          penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto, data=m_barrios)[, -1]
 
-y_train <- train_barrios$price
+y_train <- m_barrios$price
+
+
+m_barrios_t<- as.data.frame(scale(m_barrios_t, center = TRUE, scale = TRUE))
+
+x_test <- model.matrix(price ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                          dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                          penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto, data=m_barrios_t)[, -1]
+
+y_test <- m_barrios_t$price
 
 
 ##########################################
 #Modelo lasso
+p_load(glmnet)
+p_load(pls)
+p_load(ggplot2)
+p_load(scales)
 
 modelo_lasso1 <- glmnet(
   x           = x_train,
@@ -3211,6 +3307,7 @@ plot(cv_error_lasso1)
 
 #Mejor lambda a una desviacion estandar 
 paste("Mejor valor de lambda encontrado + 1 desviación estándar:", cv_error_lasso1$lambda.1se)
+#[1] "Mejor valor de lambda encontrado + 1 desviación estándar: 0.0265236061822346"
 
 
 #Estimacion de modelo con lambda optimo 
@@ -3235,12 +3332,44 @@ df_coef_lasso1 %>%
     coeficiente != 0
   ) 
 
+#1 bedrooms           0.172   
+#2 dist_bus           0.230   
+#3 dist_cinema       -0.0671  
+#4 dist_hospital      0.0720  
+#5 dist_park         -0.0140  
+#6 dist_playground   -0.0568  
+#7 oriente            0.135   
+#8 penthouse          0.0109  
+#9 balcon             0.0610  
+#10 ascen              0.000337
+#11 bathrooms          0.272   
+#12 area               0.199   
+#13 apto               0.0396  
+
 # Predicciones de entrenamiento Lasso
 predicciones_train_lasso1 <- predict(modelo_lasso1_opt, newx = x_train)
 
-# MSE
-mse_modelo_lasso <- mean((predicciones_train_lasso - y_train)^2)
+# MSE entrenamiento
+mse_modelo_lasso <- mean((predicciones_train_lasso1 - y_train)^2)
 paste("Error (mse) de lasso:", mse_modelo_lasso)
+#[1] "Error (mse) de lasso: 0.523698956238807"
+
+
+# Predicciones de test Lasso
+predicciones_train_lasso1 <- predict(modelo_lasso1_opt, newx = x_train)
+
+# MSE entrenamiento
+mse_modelo_lasso <- mean((predicciones_train_lasso1 - y_train)^2)
+paste("Error (mse) de lasso:", mse_modelo_lasso)
+#[1] "Error (mse) de lasso: 0.523698956238807"
+
+#Predicciones de test Lasso
+pred_lasso <- predict(modelo_lasso1_opt, newx = x_test)
+# MSE de test
+mse_modelo_lasso_test <- mean((pred_lasso - y_test)^2)
+paste("Error (mse) de lasso:", mse_modelo_lasso_test)
+#[1] "Error (mse) de lasso: 0.519839507497063"
+
 
 ##########################################
 #Modelo Ridge
@@ -3295,6 +3424,7 @@ plot(cv_error_ridge1)
 
 #Mejor lambda a una desviacion estandar 
 paste("Mejor valor de lambda encontrado + 1 desviación estándar:", cv_error_ridge1$lambda.1se)
+#[1] "Mejor valor de lambda encontrado + 1 desviación estándar: 0.0126008617786173"
 
 
 #Estimacion de modelo con lambda optimo 
@@ -3318,17 +3448,108 @@ df_coef_ridge1 %>%
     predictor != "(Intercept)",
     coeficiente != 0
   ) 
+# 1 cundinamarca         0.122 
+#2 bedrooms             0.210 
+#3 dist_bus             0.205 
+#4 dist_cafe            0.0748
+#5 dist_cinema         -0.0976
+#6 dist_hospital        0.0728
+#7 dist_theatre        -0.0382
+#8 dist_university      0.114 
+#9 dist_park           -0.0319
+#10 dist_playground     -0.0787
 
-# Predicciones de entrenamiento Lasso
+# Predicciones de entrenamiento Ridge
 predicciones_train_ridge1 <- predict(modelo_ridge1_opt, newx = x_train)
 
-# MSE
-mse_modelo_lasso <- mean((predicciones_train_lasso - y_train)^2)
-paste("Error (mse) de lasso:", mse_modelo_lasso)
+# MSE de entrenamiento
+mse_modelo_ridge <- mean((predicciones_train_ridge1 - y_train)^2)
+paste("Error (mse) de lasso:", mse_modelo_ridge)
+#[1] "Error (mse) de lasso: 0.511331295256529"
+
+#Predicciones de test Ridge
+pred_ridge <- predict(modelo_ridge1_opt, newx = x_test)
+# MSE de test
+mse_modelo_ridge_test <- mean((pred_ridge - y_test)^2)
+paste("Error (mse) de lasso:", mse_modelo_ridge_test)
+#[1] "Error (mse) de lasso: 0.511184268992934"
 
 
 
+set.seed(123)
+lambda_grid <- 10^seq(-4, 3, length = 100)
+ridge_caret1<- train(log(price)~cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                       dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                       penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto,
+                     data= train_barriosf,
+                     method= "glmnet",
+                     trControl = trainControl("cv", number=10),
+                     preProcess = c("center","scale"),
+                     tuneGrid = expand.grid(alpha = 0, lambda=lambda_grid))
 
+plot(ridge_caret1)
+
+p_ridge_caret1 <- predict(ridge_caret1,test_barriosf)
+MSE_pridge <- mean((y_test - p_ridge_caret1)^2)
+RMSE_pridge <- sqrt(MSE_pridge)
+ridge_pred <- c("ModeloRidge", MSE_pridge,RMSE_pridge)
+
+ridge_resultados <- data.frame(p_ridge_caret1,MSE_pridge, RMSE_pridge)
+ridge_resultados <- rbind(ridge_resultados,ridge_pred)
+write.csv(ridge_resultados,"ridge_resultados.csv", row.names = FALSE)
+
+
+#################COMPARACION MODELOS
+# se puede observar que en el ridge pesan mas las variables de distancia, pues se encuentran muchas mas en el top 10
+#en el lasso se encuentra con mayor importancia el area la cual es una variable que se esperaba que tuviera gran peso. 
+
+
+MSE_resultados <- c(mse_modelo_ols_test, mse_modelo_lasso_test, mse_modelo_ridge_test )
+RMSE_resultados <- sapply(MSE_resultados, sqrt)
+Modelo_resultados <- c("Modelo OLS","Modelo Lasso", "Modelo Ridge")
+
+ResultadosIniciales <- data.frame(Modelo_resultados, MSE_resultados, RMSE_resultados)
+
+write.csv(ResultadosIniciales, file = "comparacion modelos.csv")
+
+
+
+#Predicciones finales
+
+
+test_barrios <- test_barrios %>% dplyr::select(-price)
+
+pred_final<-(predict(modelo_ridge1_opt, test_barrios))
+
+
+
+test_total_def <- test_barrios %>% select(property_id, price, cundinamarca , bedrooms , dist_bus , dist_cafe , dist_cinema , dist_hospital , 
+                                           dist_theatre , dist_university , dist_park , dist_playground , dist_cbd , oriente , 
+                                           penthouse , balcon , renov , vista , ascen ,  parq , bathrooms , area , estrato , apto)
+
+test_total_def$pred_final<-(predict(modelo_ridge1_opt, newdata = test_total_def))^2
+
+
+test_total_pred <- select(filter(test_total_pred),c(cundinamarca , bedrooms , dist_bus , dist_cafe , dist_cinema , dist_hospital , 
+                                                      dist_theatre , dist_university , dist_park , dist_playground , dist_cbd , oriente , 
+                                                      penthouse , balcon , renov , vista , ascen ,  parq , bathrooms , area , estrato , apto))
+
+test_total_pred <- test_total_pred %>% st_drop_geometry()
+
+
+pred_ridge_t <- predict(modelo_ridge1_opt, newx = test_total_pred)
+
+pred_ridge_t <- predict(modelo_ridge1_opt, test_total_pred)
+
+
+
+# MSE de test
+mse_modelo_ridge_test <- mean((pred_ridge - test_total)^2)
+paste("Error (mse) de lasso:", mse_modelo_ridge_test)
+#[1] "Error (mse) de lasso: 0.511184268992934"
+
+
+##############
 
 ######################################################################################
 ######################################################################################
@@ -3353,3 +3574,132 @@ load("C:/Users/Camila Cely/Documents/MECA/INTERSEMESTRALES/Big Data/problem set 
 
 
 
+
+x_trainf <- model.matrix(price ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                          dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                          penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto, data=train_barrios)[, -1]
+
+y_trainf <- train_barrios$price
+
+
+x_testf <- model.matrix(price ~ cundinamarca + bedrooms + dist_bus + dist_cafe + dist_cinema + dist_hospital + 
+                         dist_theatre + dist_university + dist_park + dist_playground + dist_cbd + oriente + 
+                         penthouse + balcon + renov + vista + ascen +  parq + bathrooms + area + estrato + apto, data=test_barrios)[, -1]
+
+y_testf <- test_barrios$price
+#########################################
+#Modelo Ridge
+
+modelo_ridge2 <- glmnet(
+  x           = x_trainf,
+  y           = y_trainf,
+  alpha       = 0,
+  nlambda     = 100,
+  standardize = TRUE
+)
+
+
+# los coef en función de lambda
+regularizacion_ridge2 <- modelo_ridge2$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_ridge2$lambda)
+
+regularizacion_ridge2 <- regularizacion_ridge2 %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+
+regularizacion_ridge2 %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = trans_breaks("log10", function(x) 10^x),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes en función de la regularización") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#MSE en funcion de lambda 
+set.seed(123)
+cv_error_ridge2 <- cv.glmnet(
+  x      = x_train,
+  y      = y_train,
+  alpha  = 1,
+  nfolds = 10,
+  type.measure = "mse",
+  standardize  = TRUE
+)
+
+plot(cv_error_ridge2)
+
+
+#Mejor lambda a una desviacion estandar 
+paste("Mejor valor de lambda encontrado + 1 desviación estándar:", cv_error_ridge2$lambda.1se)
+#[1] "Mejor valor de lambda encontrado + 1 desviación estándar: 0.0126008617786173"
+
+
+#Estimacion de modelo con lambda optimo 
+modelo_ridge2_opt <- glmnet(
+  x           = x_trainf,
+  y           = y_trainf,
+  alpha       = 0,
+  lambda      = cv_error_ridge2$lambda.1se,
+  standardize = TRUE
+)
+
+
+# Coeficientes del modelo
+df_coef_ridge2 <- coef(modelo_ridge2_opt) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "predictor") %>%
+  rename(coeficiente = s0)
+
+df_coef_ridge2 %>%
+  filter(
+    predictor != "(Intercept)",
+    coeficiente != 0
+  ) 
+
+
+# Predicciones de entrenamiento Ridge
+predicciones_train_ridge2 <- predict(modelo_ridge2_opt, newx = x_trainf)
+
+# MSE de entrenamiento
+mse_modelo_ridge2 <- mean((predicciones_train_ridge2 - y_trainf)^2)
+paste("Error (mse) de lasso:", mse_modelo_ridge2)
+#[1] "Error (mse) de lasso: 406785452280314944"
+
+#Predicciones de test Ridge
+pred_ridge2 <- predict(modelo_ridge2_opt, newx = x_testf)
+# MSE de test
+mse_modelo_ridge_test2 <- mean((pred_ridge2 - y_testf)^2)
+paste("Error (mse) de lasso:", mse_modelo_ridge_test2)
+#[1] "Error (mse) de lasso: 405840442065955392"
+
+test_barrios <- test_barrios 
+Pred <- predict (modelo_ridge2_opt, test_barrios)
+
+
+
+test_barrios$Pred_precio<-predict(modelo_ols_barrios,newdata=test_barrios)
+
+test_barrios$Pred_precio2 <- test_barrios$Pred_precio
+
+test_barrios <- test_barrios %>% mutate(Pred_precio2=Pred_precio2^2)
+
+view(test_barrios$Pred_precio2)
+
+
+id<-test_barrios$property_id
+price<-test_barrios$Pred_precio2
+Predicciones_finales<-data_frame(id,price)
+summary(Predicciones_finales)
+
+
+
+write.csv(Predicciones_finales, file = "predictions_cely_ospina_22.csv")
